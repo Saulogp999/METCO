@@ -1,266 +1,274 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from scipy.optimize import minimize
 
 # ==========================================
-# CONFIGURACIÓN DE LA PÁGINA
+# CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Cotizador y Optimizador Minero - CUNI",
+    page_title="Cotizador y Valorizador Minero CUNI",
     page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("⚖️ Cotizador y Optimizador de Liquidación Minera")
-st.markdown("Herramienta para valoración de lotes de mineral/concentrado (Cu, Au, Ag, As) y optimización de mezclas (blending).")
+st.title("⚖️ Cotizador y Valorizador Minero CUNI")
+st.markdown("Herramienta para cotización de lotes mineros, liquidación comercial y cálculo de factura con IGV (2.5%).")
 
 # ==========================================
-# INICIALIZACIÓN DE ESTADO (SESSION STATE)
+# LÓGICA DE TABLA DE PAGABLES OFICIALES
 # ==========================================
-if "lotes" not in st.session_state:
-    st.session_state.lotes = pd.DataFrame([
-        {
-            "Lote": "Lote A",
-            "Toneladas (TMS)": 100.0,
-            "Ley Cu (%)": 5.5,
-            "Ley Au (oz/TC)": 0.15,
-            "Ley Ag (oz/TC)": 2.5,
-            "Arsénico (%)": 2.8,
-            "Precio Compra ($/TMS)": 450.0
-        },
-        {
-            "Lote": "Lote B",
-            "Toneladas (TMS)": 150.0,
-            "Ley Cu (%)": 3.8,
-            "Ley Au (oz/TC)": 0.20,
-            "Ley Ag (oz/TC)": 3.0,
-            "Arsénico (%)": 3.6,
-            "Precio Compra ($/TMS)": 380.0
-        }
-    ])
-
-# ==========================================
-# PARÁMETROS COMERCIALES EN SIDEBAR
-# ==========================================
-st.sidebar.header("📊 Cotizaciones y Parámetros")
-
-st.sidebar.subheader("Precios de Mercado (METCO / LME)")
-precio_cu = st.sidebar.number_input("Precio Cobre ($/lb)", value=4.10, step=0.05)
-precio_au = st.sidebar.number_input("Precio Oro ($/oz)", value=2400.0, step=10.0)
-precio_ag = st.sidebar.number_input("Precio Plata ($/oz)", value=28.0, step=0.5)
-
-st.sidebar.subheader("Porcentajes Pagables")
-st.sidebar.info("Cobre: Mínimo 4% de ley para aplicar 75% de pagable. Si es menor a 4%, el pagable es 0%.")
-pagable_au_pct = st.sidebar.slider("Pagable Oro (%)", min_value=0.0, max_value=100.0, value=90.0) / 100.0
-pagable_ag_pct = st.sidebar.slider("Pagable Plata (%)", min_value=0.0, max_value=100.0, value=85.0) / 100.0
-
-st.sidebar.subheader("Deducciones y Costos ($/TMS)")
-maquila_tc = st.sidebar.number_input("Maquila (TC $ / TMS)", value=120.0, step=5.0)
-gastos_logisticos = st.sidebar.number_input("Gastos Logísticos ($ / TMS)", value=35.0, step=2.0)
-costo_cuni = st.sidebar.number_input("Costos CUNI / Operativos ($ / TMS)", value=25.0, step=2.0)
-aplica_igv = st.sidebar.checkbox("Incluir IGV (18%) en costo total", value=True)
-
-# ==========================================
-# FUNCIONES DE CÁLCULO
-# ==========================================
-def calcular_penalizacion_arsenico(as_pct):
+def obtener_pagable_oficial(elemento, ley):
     """
-    Penalización escalonada para Arsénico (%):
-    - As < 3.0%: $0
-    - 3.0% <= As <= 3.5%: $5 por cada 0.1% sobre 3.0%
-    - As > 3.5%: $25 base + $8 por cada 0.1% sobre 3.5%
+    Retorna el % de pagable según la escala oficial de la empresa.
     """
-    if as_pct < 3.0:
-        return 0.0
-    elif 3.0 <= as_pct <= 3.5:
-        return ((as_pct - 3.0) / 0.1) * 5.0
-    else:
-        return 25.0 + ((as_pct - 3.5) / 0.1) * 8.0
+    if elemento == "Cu":
+        if ley <= 1.0:
+            return 0.0
+        elif ley <= 2.0:
+            return 60.0
+        elif ley <= 3.0:
+            return 65.0
+        elif ley <= 3.99:
+            return 70.0
+        elif ley <= 5.50:
+            return 75.0
+        elif ley <= 7.00:
+            return 78.0
+        else:
+            return 81.0
 
-def calcular_pagable_cu(ley_cu):
-    """
-    Cobre: Mínimo 4% de ley para pagar el 75%.
-    """
-    if ley_cu >= 4.0:
-        return 0.75
+    elif elemento == "Ag":
+        if ley <= 100.0:
+            return 0.0
+        elif ley <= 120.0:
+            return 50.0
+        elif ley <= 150.0:
+            return 60.0
+        elif ley <= 199.0:
+            return 65.0
+        elif ley <= 300.0:
+            return 72.0
+        else:
+            return 75.0
+
+    elif elemento == "Au":
+        if ley <= 1.0:
+            return 0.0
+        elif ley <= 1.50:
+            return 60.0
+        elif ley <= 2.00:
+            return 69.0
+        elif ley <= 3.00:
+            return 75.0
+        else:
+            return 75.0
+
     return 0.0
 
-def liquidar_lote(row):
-    tms = row["Toneladas (TMS)"]
-    ley_cu = row["Ley Cu (%)"]
-    ley_au = row["Ley Au (oz/TC)"]
-    ley_ag = row["Ley Ag (oz/TC)"]
-    as_pct = row["Arsénico (%)"]
-    precio_compra = row["Precio Compra ($/TMS)"]
+# ==========================================
+# PARÁMETROS DE MERCADO (SIDEBAR)
+# ==========================================
+st.sidebar.header("🌐 Precios Internacionales de Mercado")
 
-    # 1. Valor Pagable de Metales por TMS
-    factor_pagable_cu = calcular_pagable_cu(ley_cu)
-    val_cu = (ley_cu / 100.0) * 2204.62 * factor_pagable_cu * precio_cu
-    val_au = ley_au * pagable_au_pct * precio_au
-    val_ag = ley_ag * pagable_ag_pct * precio_ag
-    
-    valor_bruto_tms = val_cu + val_au + val_ag
+# Precio Cobre en Dólares por Tonelada Métrica ($/TM)
+precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=9200.0, step=50.0)
+precio_au_oz = st.sidebar.number_input("Precio Oro ($/oz)", value=2400.0, step=10.0)
+precio_ag_oz = st.sidebar.number_input("Precio Plata ($/oz)", value=28.5, step=0.5)
 
-    # 2. Penalización por Arsénico
-    penalizacion_as = calcular_penalizacion_arsenico(as_pct)
-
-    # 3. Costos Totales de Liquidación por TMS
-    costo_operativo_tms = maquila_tc + gastos_logisticos + costo_cuni + penalizacion_as
-    
-    # 4. Valor Neto de Liquidación por TMS
-    valor_neto_tms = valor_bruto_tms - costo_operativo_tms
-    if aplica_igv:
-        valor_neto_tms_con_igv = valor_neto_tms * 1.18
-    else:
-        valor_neto_tms_con_igv = valor_neto_tms
-
-    # 5. Evaluación de Compra (Semáforo sin confusiones de valores negativos)
-    margen_bruto_tms = valor_neto_tms - precio_compra
-    
-    # Cálculo de margen porcentual normalizado (evita valores negativos o incongruentes)
-    if valor_neto_tms > 0 and margen_bruto_tms > 0:
-        pct_margen = (margen_bruto_tms / valor_neto_tms) * 100.0
-    else:
-        pct_margen = 0.0
-
-    # Determinar Semáforo
-    if margen_bruto_tms > 15.0:
-        semaforo = "🟢 COMPRAR (Rentable)"
-    elif 0.0 <= margen_bruto_tms <= 15.0:
-        semaforo = "🟡 EVALUAR (Margen Bajo)"
-    else:
-        semaforo = "🔴 NO COMPRAR (Pérdida)"
-
-    utilidad_total = margen_bruto_tms * tms
-
-    return pd.Series({
-        "Valor Pagable Cu ($/TMS)": round(val_cu, 2),
-        "Valor Pagable Au ($/TMS)": round(val_au, 2),
-        "Valor Pagable Ag ($/TMS)": round(val_ag, 2),
-        "Valor Bruto ($/TMS)": round(valor_bruto_tms, 2),
-        "Penalización As ($/TMS)": round(penalizacion_as, 2),
-        "Valor Neto Liquidación ($/TMS)": round(valor_neto_tms, 2),
-        "Margen Bruto ($/TMS)": round(margen_bruto_tms, 2),
-        "Rentabilidad Est. (%)": round(pct_margen, 1),
-        "Semáforo Compra": semaforo,
-        "Utilidad Total ($)": round(utilidad_total, 2)
-    })
+st.sidebar.info("💡 **Nota:** El precio del cobre se ingresa y calcula directamente en **Dólares por Tonelada ($/TM)**.")
 
 # ==========================================
-# SECCIÓN 1: GESTIÓN Y EDICIÓN DE LOTES
+# PESTAÑAS PRINCIPALES
 # ==========================================
-st.header("📋 Gestión de Lotes")
-st.markdown("Edita los valores en la tabla o añade nuevos lotes. Haz clic en guardar para aplicar cambios.")
+tab1, tab2, tab3 = st.tabs([
+    "🎯 Cotizar Lote Nuevo / Individual", 
+    "📊 Gestión Múltiple de Lotes", 
+    "📜 Tabla de Pagables Oficial"
+])
 
-# Editor interactivo
-df_editado = st.data_editor(
-    st.session_state.lotes,
-    num_rows="dynamic",
-    use_container_width=True,
-    key="editor_lotes"
-)
+# ------------------------------------------
+# PESTAÑA 1: COTIZADOR INDIVIDUAL (PAGABLES PERSONALIZADOS)
+# ------------------------------------------
+with tab1:
+    st.subheader("🎯 Cotización de Lote Específico")
+    st.markdown("Usa esta pestaña para evaluar lotes individuales con pagables estándar o **pagables personalizados** si requieres ofrecer mejores condiciones para captar el mineral.")
 
-col_btn1, col_btn2 = st.columns([1, 4])
-with col_btn1:
-    if st.button("💾 Confirmar y Guardar Cambios"):
-        st.session_state.lotes = df_editado
-        st.success("¡Lotes actualizados con éxito!")
+    col1, col2 = st.columns(2)
 
-# ==========================================
-# SECCIÓN 2: RESULTADOS DE LIQUIDACIÓN
-# ==========================================
-st.header("💵 Resultado de Liquidación por Lote")
+    with col1:
+        st.markdown("### 📝 Datos del Lote")
+        nombre_lote = st.text_input("Nombre / Código del Lote", value="Lote Especial 01")
+        tms = st.number_input("Toneladas Métricas Secas (TMS)", value=50.0, min_value=0.1, step=5.0)
+        
+        ley_cu = st.number_input("Ley de Cobre - Cu (%)", value=4.50, min_value=0.0, step=0.1)
+        ley_au = st.number_input("Ley de Oro - Au (oz/TC)", value=1.80, min_value=0.0, step=0.05)
+        ley_ag = st.number_input("Ley de Plata - Ag (oz/TC)", value=210.0, min_value=0.0, step=5.0)
 
-if not df_editado.empty:
-    df_resultados = df_editado.apply(liquidar_lote, axis=1)
-    df_completo = pd.concat([df_editado, df_resultados], axis=1)
+        precio_compra_tms = st.number_input("Precio de Compra al Proveedor ($/TMS)", value=320.0, step=10.0)
 
-    st.dataframe(
-        df_completo[[
-            "Lote", "Toneladas (TMS)", "Ley Cu (%)", "Arsénico (%)",
-            "Precio Compra ($/TMS)", "Valor Neto Liquidación ($/TMS)",
-            "Penalización As ($/TMS)", "Margen Bruto ($/TMS)",
-            "Rentabilidad Est. (%)", "Semáforo Compra", "Utilidad Total ($)"
-        ]],
-        use_container_width=True
+    with col2:
+        st.markdown("### ⚙️ Configuración de Pagables")
+        usar_manual = st.checkbox("Modificar Pagables Manualmente (Lote Nuevo / Compra Especial)", value=False)
+
+        pagable_cu_auto = obtener_pagable_oficial("Cu", ley_cu)
+        pagable_au_auto = obtener_pagable_oficial("Au", ley_au)
+        pagable_ag_auto = obtener_pagable_oficial("Ag", ley_ag)
+
+        if usar_manual:
+            st.warning("⚠️ Modo Manual Activo: Puedes ajustar porcentajes pagables superiores para comprar el lote.")
+            pagable_cu = st.number_input("Pagable Cobre (%)", value=float(pagable_cu_auto), min_value=0.0, max_value=100.0, step=1.0)
+            pagable_au = st.number_input("Pagable Oro (%)", value=float(pagable_au_auto), min_value=0.0, max_value=100.0, step=1.0)
+            pagable_ag = st.number_input("Pagable Plata (%)", value=float(pagable_ag_auto), min_value=0.0, max_value=100.0, step=1.0)
+        else:
+            st.info("ℹ️ Usando pagables según la **Tabla Oficial** de la empresa.")
+            pagable_cu = pagable_cu_auto
+            pagable_au = pagable_au_auto
+            pagable_ag = pagable_ag_auto
+
+            st.write(f"• **Pagable Cu:** {pagable_cu:.1f}%")
+            st.write(f"• **Pagable Au:** {pagable_au:.1f}%")
+            st.write(f"• **Pagable Ag:** {pagable_ag:.1f}%")
+
+    # Cálculos de Valorización
+    val_cu_tms = (ley_cu / 100.0) * precio_cu_tm * (pagable_cu / 100.0)
+    val_au_tms = ley_au * precio_au_oz * (pagable_au / 100.0)
+    val_ag_tms = ley_ag * precio_ag_oz * (pagable_ag / 100.0)
+
+    valor_venta_tms = val_cu_tms + val_au_tms + val_ag_tms
+    valor_venta_total = valor_venta_tms * tms
+
+    costo_compra_total = precio_compra_tms * tms
+    ganancia_total = valor_venta_total - costo_compra_total
+    ganancia_tms = ganancia_total / tms if tms > 0 else 0
+
+    # Facturación e IGV al 2.5%
+    igv_rate = 0.025
+    igv_monto = valor_venta_total * igv_rate
+    total_facturado_igv = valor_venta_total + igv_monto
+
+    st.markdown("---")
+    st.subheader("💰 Resumen Económico y Facturación")
+
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    col_m1.metric("Costo Total Compra Lote", f"${costo_compra_total:,.2f}")
+    col_m2.metric("Valor Venta Total (Liquidación)", f"${valor_venta_total:,.2f}")
+    col_m3.metric("Ganancia Total Lote", f"${ganancia_total:,.2f}", delta=f"${ganancia_tms:,.2f} / TMS")
+    col_m4.metric("Factura Total (+2.5% IGV)", f"${total_facturado_igv:,.2f}")
+
+    # Desglose de Facturación
+    with st.expander("📄 Ver Desglose de Facturación e IGV (2.5%)", expanded=True):
+        st.table(pd.DataFrame([
+            {"Concepto": "Valor Venta del Lote (Subtotal / Base Imponible)", "Monto ($)": f"${valor_venta_total:,.2f}"},
+            {"Concepto": "IGV Minero (2.5%)", "Monto ($)": f"${igv_monto:,.2f}"},
+            {"Concepto": "TOTAL FACTURADO CON IGV", "Monto ($)": f"${total_facturado_igv:,.2f}"},
+            {"Concepto": "Costo de Compra del Lote", "Monto ($)": f"${costo_compra_total:,.2f}"},
+            {"Concepto": "GANANCIA NETA ESTIMADA", "Monto ($)": f"${ganancia_total:,.2f}"}
+        ]))
+
+# ------------------------------------------
+# PESTAÑA 2: GESTIÓN MÚLTIPLE DE LOTES
+# ------------------------------------------
+with tab2:
+    st.subheader("📊 Tabla Editable de Lotes Múltiples")
+    st.markdown("Ingresa varios lotes para calcular automáticamente el costo total, valorización según tabla oficial, ganancias e IGV (2.5%).")
+
+    if "lotes_df" not in st.session_state:
+        st.session_state.lotes_df = pd.DataFrame([
+            {"Lote": "Lote Alpha", "TMS": 100.0, "Cu (%)": 4.20, "Au (oz/TC)": 1.20, "Ag (oz/TC)": 130.0, "Precio Compra ($/TMS)": 280.0},
+            {"Lote": "Lote Beta", "TMS": 150.0, "Cu (%)": 2.50, "Au (oz/TC)": 0.80, "Ag (oz/TC)": 90.0, "Precio Compra ($/TMS)": 190.0},
+        ])
+
+    df_editor = st.data_editor(
+        st.session_state.lotes_df,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="editor_tabla_lotes"
     )
 
-    # Métricas Globales
-    st.subheader("📌 Resumen Global")
-    total_tms = df_completo["Toneladas (TMS)"].sum()
-    utilidad_global = df_completo["Utilidad Total ($)"].sum()
-    margen_promedio = utilidad_global / total_tms if total_tms > 0 else 0
+    if not df_editor.empty:
+        # Procesar Liquidación para cada lote en el DataFrame
+        def procesar_fila(row):
+            t = row["TMS"]
+            cu = row["Cu (%)"]
+            au = row["Au (oz/TC)"]
+            ag = row["Ag (oz/TC)"]
+            p_compra = row["Precio Compra ($/TMS)"]
 
-    col_m1, col_m2, col_m3 = st.columns(3)
-    col_m1.metric("Total Toneladas (TMS)", f"{total_tms:,.2f}")
-    col_m2.metric("Utilidad Proyectada Total", f"${utilidad_global:,.2f}")
-    col_m3.metric("Margen Promedio", f"${margen_promedio:,.2f} / TMS")
+            pag_cu = obtener_pagable_oficial("Cu", cu)
+            pag_au = obtener_pagable_oficial("Au", au)
+            pag_ag = obtener_pagable_oficial("Ag", ag)
 
-# ==========================================
-# SECCIÓN 3: OPTIMIZADOR DE MEZCLAS (BLENDING)
-# ==========================================
-st.header("🔄 Optimizador de Mezclas (Blending)")
-st.markdown("Encuentra la proporción óptima para maximizar la utilidad reduciendo penalizaciones por Arsénico.")
+            v_cu = (cu / 100.0) * precio_cu_tm * (pag_cu / 100.0)
+            v_au = au * precio_au_oz * (pag_au / 100.0)
+            v_ag = ag * precio_ag_oz * (pag_ag / 100.0)
 
-with st.form("form_blending"):
-    col_opt1, col_opt2 = st.columns(2)
-    with col_opt1:
-        max_as_blend = st.number_input("Ley Máxima de Arsénico permitida en mezcla (%)", value=3.0, step=0.1)
-    with col_opt2:
-        min_cu_blend = st.number_input("Ley Mínima de Cobre requerida en mezcla (%)", value=4.0, step=0.1)
-    
-    submit_opt = st.form_submit_button("🚀 Calcular Mezcla Óptima")
+            v_venta_tms = v_cu + v_au + v_ag
+            v_venta_tot = v_venta_tms * t
+            c_compra_tot = p_compra * t
+            ganancia = v_venta_tot - c_compra_tot
+            igv = v_venta_tot * 0.025
+            factura = v_venta_tot + igv
 
-if submit_opt and not df_editado.empty:
-    disponibles = df_editado["Toneladas (TMS)"].values
-    leyes_cu = df_editado["Ley Cu (%)"].values
-    leyes_as = df_editado["Arsénico (%)"].values
-    utilidades_unitarias = df_resultados["Margen Bruto ($/TMS)"].values
+            return pd.Series({
+                "Pag. Cu (%)": pag_cu,
+                "Pag. Au (%)": pag_au,
+                "Pag. Ag (%)": pag_ag,
+                "Valor Venta ($/TMS)": round(v_venta_tms, 2),
+                "Costo Compra Total ($)": round(c_compra_tot, 2),
+                "Valor Venta Total ($)": round(v_venta_tot, 2),
+                "Ganancia Total ($)": round(ganancia, 2),
+                "IGV 2.5% ($)": round(igv, 2),
+                "Factura Total ($)": round(factura, 2)
+            })
 
-    # Función objetivo a minimizar (negativo de la utilidad total)
-    def funcion_objetivo(weights):
-        return -np.sum(weights * utilidades_unitarias)
+        resultados = df_editor.apply(procesar_fila, axis=1)
+        df_completo = pd.concat([df_editor, resultados], axis=1)
 
-    # Restricciones
-    constraints = [
-        # Restricción Arsénico: sum(w_i * as_i) / sum(w_i) <= max_as_blend
-        {'type': 'ineq', 'fun': lambda w: max_as_blend * np.sum(w) - np.sum(w * leyes_as)},
-        # Restricción Cobre: sum(w_i * cu_i) / sum(w_i) >= min_cu_blend
-        {'type': 'ineq', 'fun': lambda w: np.sum(w * leyes_cu) - min_cu_blend * np.sum(w)}
+        st.subheader("📋 Resultados de Liquidación")
+        st.dataframe(df_completo, use_container_width=True)
+
+        # Totales Consolidados
+        tms_totales = df_completo["TMS"].sum()
+        costo_total_acum = df_completo["Costo Compra Total ($)"].sum()
+        venta_total_acum = df_completo["Valor Venta Total ($)"].sum()
+        ganancia_acum = df_completo["Ganancia Total ($)"].sum()
+        igv_acum = df_completo["IGV 2.5% ($)"].sum()
+        factura_acum = df_completo["Factura Total ($)"].sum()
+
+        st.markdown("### 📈 Totales Acumulados")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total TMS", f"{tms_totales:,.2f}")
+        c2.metric("Costo Compra Total", f"${costo_total_acum:,.2f}")
+        c3.metric("Ganancia Neta Total", f"${ganancia_acum:,.2f}")
+        c4.metric("Factura Total (+2.5% IGV)", f"${factura_acum:,.2f}")
+
+# ------------------------------------------
+# PESTAÑA 3: TABLA DE PAGABLES OFICIAL
+# ------------------------------------------
+with tab3:
+    st.subheader("📜 Escala Oficial de Pagables (Referencia)")
+    st.markdown("Esta es la tabla base de pagables utilizada para las valorizaciones automáticas.")
+
+    datos_tabla_oficial = [
+        {"Elemento": "Cu", "Contenido Desde": "0%", "Contenido Hasta": "1%", "Pagable (%)": "0.0%"},
+        {"Elemento": "Cu", "Contenido Desde": "1.01%", "Contenido Hasta": "2%", "Pagable (%)": "60.0%"},
+        {"Elemento": "Cu", "Contenido Desde": "2.01%", "Contenido Hasta": "3%", "Pagable (%)": "65.0%"},
+        {"Elemento": "Cu", "Contenido Desde": "3.00%", "Contenido Hasta": "3.99%", "Pagable (%)": "70.0%"},
+        {"Elemento": "Cu", "Contenido Desde": "4.00%", "Contenido Hasta": "5.5%", "Pagable (%)": "75.0%"},
+        {"Elemento": "Cu", "Contenido Desde": "5.51%", "Contenido Hasta": "7%", "Pagable (%)": "78.0%"},
+        {"Elemento": "Cu", "Contenido Desde": "7.01%", "Contenido Hasta": "10%", "Pagable (%)": "81.0%"},
+        {"Elemento": "Ag", "Contenido Desde": "0", "Contenido Hasta": "100", "Pagable (%)": "0.0%"},
+        {"Elemento": "Ag", "Contenido Desde": "101", "Contenido Hasta": "120", "Pagable (%)": "50.0%"},
+        {"Elemento": "Ag", "Contenido Desde": "121", "Contenido Hasta": "150", "Pagable (%)": "60.0%"},
+        {"Elemento": "Ag", "Contenido Desde": "151", "Contenido Hasta": "199", "Pagable (%)": "65.0%"},
+        {"Elemento": "Ag", "Contenido Desde": "200", "Contenido Hasta": "300", "Pagable (%)": "72.0%"},
+        {"Elemento": "Ag", "Contenido Desde": "301", "Contenido Hasta": "500", "Pagable (%)": "75.0%"},
+        {"Elemento": "Au", "Contenido Desde": "0", "Contenido Hasta": "1", "Pagable (%)": "0.0%"},
+        {"Elemento": "Au", "Contenido Desde": "1.01", "Contenido Hasta": "1.5", "Pagable (%)": "60.0%"},
+        {"Elemento": "Au", "Contenido Desde": "1.51", "Contenido Hasta": "2", "Pagable (%)": "69.0%"},
+        {"Elemento": "Au", "Contenido Desde": "2.01", "Contenido Hasta": "3", "Pagable (%)": "75.0%"},
+        {"Elemento": "Au", "Contenido Desde": "3.01", "Contenido Hasta": "8", "Pagable (%)": "75.0%"},
     ]
 
-    # Límites por cada lote (0 <= toneladas_usadas <= toneladas_disponibles)
-    bounds = [(0, disp) for disp in disponibles]
-    x0 = disponibles / 2.0
-
-    res = minimize(funcion_objetivo, x0, method='SLSQP', bounds=bounds, constraints=constraints)
-
-    if res.success:
-        toneladas_optimas = res.x
-        df_editado_blend = df_editado.copy()
-        df_editado_blend["TMS a Mezclar"] = np.round(toneladas_optimas, 2)
-        
-        tms_totales_blend = np.sum(toneladas_optimas)
-        if tms_totales_blend > 0:
-            ley_cu_prom = np.sum(toneladas_optimas * leyes_cu) / tms_totales_blend
-            ley_as_prom = np.sum(toneladas_optimas * leyes_as) / tms_totales_blend
-            utilidad_max = -res.fun
-
-            st.success("✅ ¡Mezcla óptima calculada exitosamente!")
-            
-            st.dataframe(
-                df_editado_blend[["Lote", "Toneladas (TMS)", "TMS a Mezclar", "Ley Cu (%)", "Arsénico (%)"]],
-                use_container_width=True
-            )
-
-            col_b1, col_b2, col_b3 = st.columns(3)
-            col_b1.metric("Toneladas Mezcladas", f"{tms_totales_blend:,.2f} TMS")
-            col_b2.metric("Ley Mezcla Cu (%)", f"{ley_cu_prom:.2f}%")
-            col_b3.metric("Ley Mezcla As (%)", f"{ley_as_prom:.2f}%")
-            st.metric("Utilidad Máxima Proyectada de la Mezcla", f"${utilidad_max:,.2f}")
-        else:
-            st.warning("No es posible realizar una mezcla con los límites especificados y los lotes disponibles.")
-    else:
-        st.error("No se encontró una solución factible con los parámetros ingresados. Revisa los límites de Arsénico o Cobre.")
+    st.table(pd.DataFrame(datos_tabla_oficial))
