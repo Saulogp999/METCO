@@ -392,3 +392,9 @@ with tab4:
 
     st.table(pd.DataFrame(datos_tabla_oficial))
 ```
+
+### ¿Cómo probar estos cambios?
+1. Copia y reemplaza todo el contenido en tu archivo `app.py` en GitHub.
+2. Al ingresar en la app desde tu celular o computadora, cotiza un nuevo lote en la Pestaña 1 ingresando Au y Ag en `g/t`.
+3. Presiona **`➕ Confirmar y Agregar este Lote a la Lista General`**.
+4. Dirígete a la pestaña **`🔄 Blending / Mezcla de Lotes`** para ajustar las toneladas a mezclar y ver el resultado comercial unificado.
