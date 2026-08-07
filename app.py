@@ -171,7 +171,7 @@ with tab1:
     if precio_ofrecido <= precio_recomendado_tm:
         st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
     elif ganancia_neta_lote > 0:
-        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás offrant **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
+        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás ofreciendo **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
     else:
         st.error(f"🔴 **LOTE DEFICITARIO**: Tu precio ofrecido (${precio_ofrecido:,.2f}/TM) supera el valor de venta total. Genera una pérdida de **${abs(ganancia_neta_lote):,.2f}** si no se mezcla.")
 
@@ -205,7 +205,7 @@ with tab1:
 # TAB 2: BLENDING ÓPTIMO
 # ------------------------------------------
 with tab2:
-    st.subheader("🔄 Optimizador de Blending con Leyes Mínimas Obligatorias")
+    st.subheader("🔄 Optimizador de Blending con Rangos de Leyes (Mínimas y Máximas)")
 
     if len(st.session_state.lotes_comprados) == 0:
         st.warning("No hay lotes en cartera. Registra nuevos lotes en la pestaña 'Cotizar Lote Individual' para activar el optimizador.")
@@ -225,12 +225,18 @@ with tab2:
             st.rerun()
 
         st.markdown("---")
-        st.markdown("### 🎯 Metas de Leyes Mínimas Requeridas para la Mezcla")
+        st.markdown("### 🎯 Definición de Rangos de Leyes para la Mezcla")
         
-        col_m1, col_m2, col_m3 = st.columns(3)
-        min_au_target = col_m1.number_input("Ley Mínima Oro Au (g/t)", value=3.0, step=0.1)
-        min_ag_target = col_m2.number_input("Ley Mínima Plata Ag (g/t)", value=350.0, step=10.0)
-        min_cu_target = col_m3.number_input("Ley Mínima Cobre Cu (%)", value=4.0, step=0.1)
+        st.caption("Ajusta los límites inferiores y superiores. El optimizador mezclará lotes de alta y baja ley sin exceder los techos.")
+        col_min1, col_min2, col_min3 = st.columns(3)
+        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=4.0, step=0.1)
+        min_au_target = col_min2.number_input("Ley Mínima Oro Au (g/t)", value=3.0, step=0.1)
+        min_ag_target = col_min3.number_input("Ley Mínima Plata Ag (g/t)", value=350.0, step=10.0)
+
+        col_max1, col_max2, col_max3 = st.columns(3)
+        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=5.5, step=0.1)
+        max_au_target = col_max2.number_input("Ley Máxima Oro Au (g/t)", value=4.0, step=0.1)
+        max_ag_target = col_max3.number_input("Ley Máxima Plata Ag (g/t)", value=400.0, step=10.0)
 
         lotes_lista = st.session_state.lotes_comprados
 
@@ -259,11 +265,16 @@ with tab2:
             
             return -(venta_b - costo_b)
 
-        # Restricciones de Leyes Mínimas
+        # Restricciones de Mínimos y Máximos
         constraints = [
+            # Restricciones Mínimas
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Cu (%)"] - min_cu_target for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Au (g/t)"] - min_au_target for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Ag (g/t)"] - min_ag_target for l in lotes_lista])},
+            # Restricciones Máximas
+            {'type': 'ineq', 'fun': lambda w: np.sum(w * [max_cu_target - l["Ley Cu (%)"] for l in lotes_lista])},
+            {'type': 'ineq', 'fun': lambda w: np.sum(w * [max_au_target - l["Ley Au (g/t)"] for l in lotes_lista])},
+            {'type': 'ineq', 'fun': lambda w: np.sum(w * [max_ag_target - l["Ley Ag (g/t)"] for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w) - 0.01}
         ]
 
@@ -299,18 +310,18 @@ with tab2:
             venta_total_mezcla = val_tm_mezcla * tms_total_mezcla
             ganancia_total_mezcla = venta_total_mezcla - costo_total_mezcla
 
-            st.success("✅ **Sugerencia de Blending Óptimo Calculada Exitosamente**")
+            st.success("✅ **Composición Óptima de Blending Calculada Exitosamente**")
             st.markdown("#### 📋 Toneladas Exactas a Mezclar por Lote")
             st.dataframe(
                 df_resultado_opt[["Lote", "TMS", "TMS a Colocar", "% Utilizado del Lote", "Precio Compra ($/TM)", "Costo Subtotal ($)"]],
                 use_container_width=True
             )
 
-            st.markdown("#### 🧪 Leyes Resultantes de la Mezcla vs. Metas Mínimas")
+            st.markdown("#### 🧪 Leyes Resultantes de la Mezcla vs. Rangos Permitidos")
             l1, l2, l3 = st.columns(3)
-            l1.metric("Ley Cobre Cu (%)", f"{cu_blend:.2f}%", f"Meta: ≥{min_cu_target}% | Pagable: {pag_cu_opt}%")
-            l2.metric("Ley Oro Au (g/t)", f"{au_blend:.2f} g/t", f"Meta: ≥{min_au_target}g | Pagable: {pag_au_opt}%")
-            l3.metric("Ley Plata Ag (g/t)", f"{ag_blend:.2f} g/t", f"Meta: ≥{min_ag_target}g | Pagable: {pag_ag_opt}%")
+            l1.metric("Ley Cobre Cu (%)", f"{cu_blend:.2f}%", f"Rango: {min_cu_target}% - {max_cu_target}% | Pagable: {pag_cu_opt}%")
+            l2.metric("Ley Oro Au (g/t)", f"{au_blend:.2f} g/t", f"Rango: {min_au_target}g - {max_au_target}g | Pagable: {pag_au_opt}%")
+            l3.metric("Ley Plata Ag (g/t)", f"{ag_blend:.2f} g/t", f"Rango: {min_ag_target}g - {max_ag_target}g | Pagable: {pag_ag_opt}%")
 
             st.markdown("---")
             st.markdown("#### 💰 Balance Financiero Total de la Mezcla")
@@ -321,7 +332,7 @@ with tab2:
             b4.metric("Ganancia Máxima Proyectada", f"${ganancia_total_mezcla:,.2f}", f"ROI: {(ganancia_total_mezcla/costo_total_mezcla)*100:.1f}%")
 
         else:
-            st.error(f"⚠️ **Incapaz de cumplir con las metas mínimas**: Con los lotes actualmente registrados no es posible alcanzar simultáneamente Oro ≥ {min_au_target}g, Plata ≥ {min_ag_target}g y Cobre ≥ {min_cu_target}%. Agrega un lote con mayores leyes o ajusta las metas.")
+            st.error(f"⚠️ **Incapaz de cumplir con los rangos definidos**: Con los lotes actualmente registrados no es posible lograr una mezcla que esté simultáneamente dentro de los rangos de Cobre ({min_cu_target}% - {max_cu_target}%), Oro ({min_au_target}g - {max_au_target}g) y Plata ({min_ag_target}g - {max_ag_target}g). Revisa las leyes de tus lotes o amplía los rangos.")
 
 # ------------------------------------------
 # TAB 3: VISIÓN GENERAL DEL NEGOCIO
@@ -365,7 +376,7 @@ with tab3:
         with c_right:
             st.markdown("### 💡 Recomendaciones Gerenciales")
             st.markdown("""
-            * **Estrategia de Pagables**: Al concentrar las mezclas para superar los **4% de Cu**, **3.0g de Au** y **350g de Ag**, accedes automáticamente a las mejores escalas de la tabla (75% pagable en Cu/Au/Ag).
+            * **Estrategia de Blending con Rango Techo**: Limitar la mezcla a **5.5% Cu**, **4.0 g/t Au** y **400 g/t Ag** evita 'regalar' ley en la venta al cliente final y fuerza al algoritmo a diluir y digerir los lotes de baja ley que tienes comprados.
             * **Control de Compras Especiales**: Cuando compres minerales con sobreprecio, verifica en la pestaña de Blending cuántas toneladas de lote de alta ley necesitas para amortizar dicho re-pago.
             * **Facturación**: La emisión de comprobantes se calcula considerando la **tasa de IGV del 2.5%** sobre la base imponible del concentrado comercializado.
             """)
