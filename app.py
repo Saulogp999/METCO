@@ -117,7 +117,7 @@ with tab1:
     pag_au_tabla = obtener_pagable_au(ley_au_gt)
     pag_ag_tabla = obtener_pagable_ag(ley_ag_gt)
 
-    # Precio Recomendado de Compra (basado 100% en el valor de liquidación oficial)
+    # Precio Recomendado de Compra
     precio_recomendado_tm = calcular_valor_por_tm(
         ley_cu, ley_au_gt, ley_ag_gt, 
         pag_cu_tabla, pag_au_tabla, pag_ag_tabla, 
@@ -171,7 +171,7 @@ with tab1:
     if precio_ofrecido <= precio_recomendado_tm:
         st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
     elif ganancia_neta_lote > 0:
-        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás ofreciendo **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
+        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás offrant **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
     else:
         st.error(f"🔴 **LOTE DEFICITARIO**: Tu precio ofrecido (${precio_ofrecido:,.2f}/TM) supera el valor de venta total. Genera una pérdida de **${abs(ganancia_neta_lote):,.2f}** si no se mezcla.")
 
@@ -264,7 +264,7 @@ with tab2:
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Cu (%)"] - min_cu_target for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Au (g/t)"] - min_au_target for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Ag (g/t)"] - min_ag_target for l in lotes_lista])},
-            {'type': 'ineq', 'fun': lambda w: np.sum(w) - 0.01} # Al menos usar algo de tonelaje
+            {'type': 'ineq', 'fun': lambda w: np.sum(w) - 0.01}
         ]
 
         bounds = [(0, l["TMS"]) for l in lotes_lista]
@@ -338,7 +338,7 @@ with tab3:
         inversion_total_dash = df_dash["Costo Total ($)"].sum()
         venta_total_dash = df_dash["Valor Venta ($)"].sum()
         ganancia_total_dash = df_dash["Ganancia Directa ($)"].sum()
-         sobreprecio_acumulado = df_dash["Sobreprecio Total ($)"].sum()
+        sobreprecio_acumulado = df_dash["Sobreprecio Total ($)"].sum()
 
         st.markdown("### 📈 Indicadores Clave de Desempeño (KPIs)")
         k1, k2, k3, k4 = st.columns(4)
