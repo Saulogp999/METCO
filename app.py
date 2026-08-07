@@ -29,7 +29,7 @@ st.markdown("""
 
 st.markdown('<div class="main-header">⚒️ Cotizador & Blend de Minerales (CUNI)</div>', unsafe_allow_html=True)
 
-# --- TABLA DE PAGABLES DE CUNI ---
+# --- TABLA DE PAGABLES DE CUNI (ACTUALIZADA: Cu Mínimo 4% -> 75% Pagable) ---
 def get_pagables(au_pond, ag_pond, cu_pond):
     # Au (g/t)
     if au_pond < 1.01: p_au = 0.0
@@ -45,12 +45,9 @@ def get_pagables(au_pond, ag_pond, cu_pond):
     elif ag_pond <= 300: p_ag = 0.72
     else: p_ag = 0.75
     
-    # Cu (%)
+    # Cu (%) - Límite mínimo 4% (0.04 decimal) para obtener pagable (75%)
     cu_dec = cu_pond / 100.0 if cu_pond > 1.0 else cu_pond
-    if cu_dec <= 0.01: p_cu = 0.0
-    elif cu_dec <= 0.02: p_cu = 0.60
-    elif cu_dec <= 0.0299: p_cu = 0.65
-    elif cu_dec <= 0.0399: p_cu = 0.70
+    if cu_dec < 0.040: p_cu = 0.0
     elif cu_dec <= 0.0550: p_cu = 0.75
     elif cu_dec <= 0.0700: p_cu = 0.78
     else: p_cu = 0.81
@@ -162,14 +159,11 @@ with st.sidebar:
     st.header("🎯 Objetivos Mínimos")
     au_obj = st.number_input("Au Mínimo (g/t)", value=3.0, step=0.1)
     ag_obj = st.number_input("Ag Mínimo (g/t)", value=350.0, step=10.0)
-    cu_obj = st.number_input("Cu Mínimo (%)", value=5.0, step=0.1)
+    cu_obj = st.number_input("Cu Mínimo (%)", value=4.0, step=0.1)
     as_max = st.number_input("As Máximo (%)", value=2.5, step=0.1)
     min_ton = st.number_input("Tanda Mínima (t)", value=10.0, step=5.0)
 
-# --- INGRESO DE LOTES ---
-st.subheader("📦 Registro de Lotes")
-st.caption("ℹ️ *Ingresa el % de As directamente en decimales (ejemplo: `0.01` para 0.01%, `0.05` para 0.05%).*")
-
+# --- INICIALIZACIÓN DE DATOS DE LOTES EN SESSION STATE ---
 if 'df_lotes' not in st.session_state:
     st.session_state.df_lotes = pd.DataFrame([
         {"Lote": "CARRO 1", "Peso Max (t)": 33.77, "Au (g/t)": 3.43, "Ag (g/t)": 333.0, "Cu (%)": 4.54, "As (%)": 0.010, "Precio ($/t)": 1100.0},
@@ -180,12 +174,64 @@ if 'df_lotes' not in st.session_state:
         {"Lote": "CARRO 6", "Peso Max (t)": 37.28, "Au (g/t)": 3.37, "Ag (g/t)": 304.0, "Cu (%)": 4.60, "As (%)": 0.010, "Precio ($/t)": 1100.0},
     ])
 
+# --- INGRESO DE LOTES ---
+st.subheader("📦 Registro de Lotes")
+st.caption("ℹ️ *Edita directamente los valores en la tabla. Para añadir o quitar lotes usa las opciones explícitas abajo.*")
+
+# Editor con num_rows="fixed" para prevenir filas vacías involuntarias
 edited_df = st.data_editor(
     st.session_state.df_lotes,
-    num_rows="dynamic",
+    num_rows="fixed",
     use_container_width=True,
     key="editor_lotes"
 )
+st.session_state.df_lotes = edited_df
+
+# --- SECCIÓN EXPANDIBLE CON CONFIRMACIÓN PARA AÑADIR O ELIMINAR FILAS ---
+with st.expander("➕ / 🗑️ Añadir o Eliminar Lotes (Gestión de Filas)", expanded=False):
+    tab_add, col_del = st.tabs(["➕ Agregar Nuevo Lote", "🗑️ Eliminar Lote"])
+    
+    with tab_add:
+        st.write("**Ingresa los datos del nuevo lote y confirma:**")
+        ca1, ca2, ca3 = st.columns(3)
+        num_lotes = len(st.session_state.df_lotes) + 1
+        nuevo_nombre = ca1.text_input("Nombre del Lote", value=f"CARRO {num_lotes}")
+        nuevo_peso = ca2.number_input("Peso Max (t)", value=20.0, step=1.0)
+        nuevo_au = ca3.number_input("Au (g/t)", value=3.20, step=0.1)
+        
+        ca4, ca5, ca6, ca7 = st.columns(4)
+        nuevo_ag = ca4.number_input("Ag (g/t)", value=320.0, step=10.0)
+        nuevo_cu = ca5.number_input("Cu (%)", value=4.50, step=0.1)
+        nuevo_as = ca6.number_input("As (%)", value=0.01, step=0.005, format="%.3f")
+        nuevo_precio = ca7.number_input("Precio ($/t)", value=1100.0, step=50.0)
+        
+        if st.button("✅ Confirmar y Agregar Lote", type="primary"):
+            nueva_fila = pd.DataFrame([{
+                "Lote": nuevo_nombre,
+                "Peso Max (t)": nuevo_peso,
+                "Au (g/t)": nuevo_au,
+                "Ag (g/t)": nuevo_ag,
+                "Cu (%)": nuevo_cu,
+                "As (%)": nuevo_as,
+                "Precio ($/t)": nuevo_precio
+            }])
+            st.session_state.df_lotes = pd.concat([st.session_state.df_lotes, nueva_fila], ignore_index=True)
+            if 'opt_weights' in st.session_state:
+                del st.session_state.opt_weights
+            st.success(f"¡Lote '{nuevo_nombre}' agregado correctamente!")
+            st.rerun()
+
+    with col_del:
+        if len(st.session_state.df_lotes) > 1:
+            lote_a_eliminar = st.selectbox("Selecciona el lote a eliminar", st.session_state.df_lotes["Lote"].tolist())
+            if st.button("🔴 Confirmar Eliminación de Lote"):
+                st.session_state.df_lotes = st.session_state.df_lotes[st.session_state.df_lotes["Lote"] != lote_a_eliminar].reset_index(drop=True)
+                if 'opt_weights' in st.session_state:
+                    del st.session_state.opt_weights
+                st.warning(f"Lote '{lote_a_eliminar}' eliminado.")
+                st.rerun()
+        else:
+            st.info("Debe haber al menos 1 lote en la lista.")
 
 # --- EVALUACIÓN DE COTIZACIONES INTERNAS INDIVIDUALES ---
 st.write("### 📊 Evaluación de Precios de Compra vs. Cotización Interna")
@@ -232,6 +278,8 @@ with col_b2:
             {"Lote": "CARRO 2", "Peso Max (t)": 46.08, "Au (g/t)": 3.19, "Ag (g/t)": 325.0, "Cu (%)": 4.54, "As (%)": 0.010, "Precio ($/t)": 1100.0},
             {"Lote": "CARRO 3", "Peso Max (t)": 28.69, "Au (g/t)": 3.07, "Ag (g/t)": 311.0, "Cu (%)": 4.63, "As (%)": 0.010, "Precio ($/t)": 1100.0},
         ])
+        if 'opt_weights' in st.session_state:
+            del st.session_state.opt_weights
         st.rerun()
 
 # --- EJECUCIÓN DEL SOLVER ---
@@ -389,3 +437,4 @@ if not df_editado.empty:
         ]],
         use_container_width=True
     )
+
