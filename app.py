@@ -4,22 +4,22 @@ import numpy as np
 from scipy.optimize import minimize
 
 # ==========================================
-# CONFIGURACIÓN PÁGINA
+# CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Cotizador Minero y Blending - CUNI",
+    page_title="Cotizador Minero y Blending Óptimo - CUNI",
     page_icon="⚖️",
     layout="wide"
 )
 
-st.title("⚖️ Cotizador Minero, Análisis de Sobreprecio y Blending Óptimo")
+st.title("⚖️ Cotizador Minero, Precio Recomendado y Blending Óptimo")
 
-# Inicialización de estado para la cartera de lotes
+# Inicialización del estado global de lotes en cartera
 if "lotes_comprados" not in st.session_state:
     st.session_state.lotes_comprados = []
 
 # ==========================================
-# FUNCIONES DE PAGABLES SEGÚN TABLA OFICIAL
+# FUNCIONES DE TABLA OFICIAL DE PAGABLES
 # ==========================================
 def obtener_pagable_cu(ley_cu):
     if ley_cu <= 1.0:
@@ -72,7 +72,7 @@ def calcular_valor_por_tm(ley_cu, ley_au_gt, ley_ag_gt, pag_cu, pag_au, pag_ag, 
     return val_cu + val_au + val_ag
 
 # ==========================================
-# SIDEBAR - COTIZACIONES INTERNACIONALES
+# SIDEBAR - PARÁMETROS Y COTIZACIONES
 # ==========================================
 st.sidebar.header("🌐 Cotizaciones de Mercado")
 precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=9000.0, step=100.0)
@@ -81,12 +81,12 @@ precio_ag_oz = st.sidebar.number_input("Precio Plata ($/oz)", value=28.0, step=0
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📋 Tabla Oficial de Referencia")
-st.sidebar.caption("• Cu: 0-1%: 0% | 1-2%: 60% | 2-3%: 65% | 3-4%: 70% | 4-5.5%: 75% | 5.5-7%: 78% | >7%: 81%")
-st.sidebar.caption("• Ag (g/t): <100: 0% | 101-120: 50% | 121-150: 60% | 151-199: 65% | 200-300: 72% | >300: 75%")
-st.sidebar.caption("• Au (g/t): <1.0: 0% | 1.01-1.5: 60% | 1.51-2.0: 69% | >2.0: 75%")
+st.sidebar.caption("• **Cu**: ≤1%: 0% | 1-2%: 60% | 2-3%: 65% | 3-4%: 70% | 4-5.5%: 75% | 5.5-7%: 78% | >7%: 81%")
+st.sidebar.caption("• **Ag (g/t)**: ≤100: 0% | 101-120: 50% | 121-150: 60% | 151-199: 65% | 200-300: 72% | >300: 75%")
+st.sidebar.caption("• **Au (g/t)**: ≤1.0: 0% | 1.01-1.5: 60% | 1.51-2.0: 69% | >2.0: 75%")
 
 # ==========================================
-# PESTAÑAS PRINCIPALES
+# PESTAÑAS DE LA APLICACIÓN
 # ==========================================
 tab1, tab2, tab3 = st.tabs([
     "🎯 Cotizar Lote Individual", 
@@ -98,113 +98,88 @@ tab1, tab2, tab3 = st.tabs([
 # TAB 1: COTIZAR LOTE INDIVIDUAL
 # ------------------------------------------
 with tab1:
-    st.subheader("Cotización de Lote y Análisis de Sobreprecio")
+    st.subheader("Cotización de Lote y Análisis de Precio Sugerido")
     
-    col_in1, col_in2, col_in3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
     
-    with col_in1:
+    with col1:
         nombre_lote = st.text_input("Nombre / Código del Lote", value=f"Lote {len(st.session_state.lotes_comprados) + 1}")
         tms = st.number_input("Toneladas Métricas Secas (TMS)", value=100.0, step=10.0)
-        precio_compra_pactado = st.number_input("Precio Compra Pactado ($/TM)", value=420.0, step=10.0)
+        precio_ofrecido = st.number_input("Precio que Vas a Ofrecer / Comprar ($/TM)", value=430.0, step=10.0)
 
-    with col_in2:
+    with col2:
         ley_cu = st.number_input("Ley Cobre Cu (%)", value=3.8, step=0.1)
-        ley_au_gt = st.number_input("Ley Oro Au (g/t)", value=1.4, step=0.1)
-        ley_ag_gt = st.number_input("Ley Plata Ag (g/t)", value=115.0, step=5.0)
+        ley_au_gt = st.number_input("Ley Oro Au (g/t)", value=2.2, step=0.1)
+        ley_ag_gt = st.number_input("Ley Plata Ag (g/t)", value=180.0, step=5.0)
 
-    # Cálculo automático de pagables por Tabla
+    # Pagables automáticos según tabla oficial
     pag_cu_tabla = obtener_pagable_cu(ley_cu)
     pag_au_tabla = obtener_pagable_au(ley_au_gt)
     pag_ag_tabla = obtener_pagable_ag(ley_ag_gt)
 
-    with col_in3:
-        st.markdown("### Configuración de Pagables")
-        modificar_pagables = st.checkbox("Ingresar pagables especiales (Compra Acordada)")
-        
-        if modificar_pagables:
-            pag_cu_pactado = st.number_input("Pagable Cu Pactado (%)", value=75.0, step=1.0)
-            pag_au_pactado = st.number_input("Pagable Au Pactado (%)", value=60.0, step=1.0)
-            pag_ag_pactado = st.number_input("Pagable Ag Pactado (%)", value=50.0, step=1.0)
-        else:
-            pag_cu_pactado = pag_cu_tabla
-            pag_au_pactado = pag_au_tabla
-            pag_ag_pactado = pag_ag_tabla
-
-    # Valores comerciales por TM
-    valor_tm_tabla = calcular_valor_por_tm(
+    # Precio Recomendado de Compra (basado 100% en el valor de liquidación oficial)
+    precio_recomendado_tm = calcular_valor_por_tm(
         ley_cu, ley_au_gt, ley_ag_gt, 
         pag_cu_tabla, pag_au_tabla, pag_ag_tabla, 
         precio_cu_tm, precio_au_oz, precio_ag_oz
     )
 
-    valor_tm_pactado = calcular_valor_por_tm(
+    with col3:
+        st.markdown("### Configuración de Pagables")
+        modificar_pagables = st.checkbox("Ajustar pagables pactados manualmente")
+        
+        if modificar_pagables:
+            pag_cu_pactado = st.number_input("Pagable Cu Pactado (%)", value=75.0, step=1.0)
+            pag_au_pactado = st.number_input("Pagable Au Pactado (%)", value=69.0, step=1.0)
+            pag_ag_pactado = st.number_input("Pagable Ag Pactado (%)", value=65.0, step=1.0)
+        else:
+            pag_cu_pactado = pag_cu_tabla
+            pag_au_pactado = pag_au_tabla
+            pag_ag_pactado = pag_ag_tabla
+            st.info(f"Pagables Tabla -> Cu: {pag_cu_tabla}% | Au: {pag_au_tabla}% | Ag: {pag_ag_tabla}%")
+
+    # Valor de Venta con los pagables acordados
+    valor_venta_pactada_tm = calcular_valor_por_tm(
         ley_cu, ley_au_gt, ley_ag_gt, 
         pag_cu_pactado, pag_au_pactado, pag_ag_pactado, 
         precio_cu_tm, precio_au_oz, precio_ag_oz
     )
 
-    costo_total_compra = precio_compra_pactado * tms
-    valor_total_venta_pactada = valor_tm_pactado * tms
-    valor_total_venta_tabla = valor_tm_tabla * tms
-    ganancia_neta_lote = valor_total_venta_pactada - costo_total_compra
+    costo_total_compra = precio_ofrecido * tms
+    valor_total_venta = valor_venta_pactada_tm * tms
+    ganancia_neta_lote = valor_total_venta - costo_total_compra
 
-    # Cálculo de Sobreprecio / Re-pago sobre Tabla Oficial
-    diferencia_tm = precio_compra_pactado - valor_tm_tabla
-    sobreprecio_total = diferencia_tm * tms
-
-    # Lógica de Semáforo
-    if precio_compra_pactado <= valor_tm_tabla:
-        semaforo = "🟢 COMPRA EXCELENTE (En o bajo Tabla Oficial)"
-        estado_color = "success"
-    elif precio_compra_pactado <= valor_tm_pactado and ganancia_neta_lote > 0:
-        semaforo = "🟡 SOBREPRECIO CONTROLADO (Se paga sobre tabla pero hay margen positivo)"
-        estado_color = "warning"
-    else:
-        semaforo = "🔴 LOTE SOBREPAGADO (Pérdida Directa frente a Venta)"
-        estado_color = "error"
+    # Diferencia entre Precio Ofrecido y Precio Recomendado
+    diferencia_tm = precio_ofrecido - precio_recomendado_tm
+    impacto_sobreprecio_total = diferencia_tm * tms
 
     st.markdown("---")
-    st.subheader("🔍 Comparativa con Tabla Oficial y Evaluación de Re-pago")
+    st.subheader("💡 Comparativa de Precios y Sugerencia Comercial")
 
-    # Tabla Comparativa de Pagables
-    df_comparativa = pd.DataFrame({
-        "Elemento": ["Cobre (Cu)", "Oro (Au)", "Plata (Ag)"],
-        "Ley Ingresada": [f"{ley_cu:.2f} %", f"{ley_au_gt:.2f} g/t", f"{ley_ag_gt:.2f} g/t"],
-        "Pagable Tabla Oficial": [f"{pag_cu_tabla}%", f"{pag_au_tabla}%", f"{pag_ag_tabla}%"],
-        "Pagable Pactado (Compra)": [f"{pag_cu_pactado}%", f"{pag_au_pactado}%", f"{pag_ag_pactado}%"],
-        "Diferencia Pagable": [
-            f"{pag_cu_pactado - pag_cu_tabla:+.1f}%",
-            f"{pag_au_pactado - pag_au_tabla:+.1f}%",
-            f"{pag_ag_pactado - pag_ag_tabla:+.1f}%"
-        ]
-    })
-    st.table(df_comparativa)
-
-    # Tarjeta de Estado / Semáforo
-    if estado_color == "success":
-        st.success(f"**Semáforo de Compra**: {semaforo}")
-    elif estado_color == "warning":
-        st.warning(f"**Semáforo de Compra**: {semaforo}")
-    else:
-        st.error(f"**Semáforo de Compra**: {semaforo}")
-
-    # Métricas de Costo y Sobreprecio
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Costo Total del Lote", f"${costo_total_compra:,.2f}", f"${precio_compra_pactado:,.2f} / TM")
-    c2.metric("Valor Tabla Oficial", f"${valor_total_venta_tabla:,.2f}", f"${valor_tm_tabla:,.2f} / TM")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Precio Recomendado Tabla", f"${precio_recomendado_tm:,.2f} / TM")
+    m2.metric("Precio que Ofreces", f"${precio_ofrecido:,.2f} / TM")
     
-    if diferencia_tm > 0:
-        c3.metric("Sobreprecio / Re-pago ($)", f"${sobreprecio_total:,.2f}", f"+${diferencia_tm:,.2f} / TM por encima de tabla", delta_color="inverse")
+    if diferencia_tm <= 0:
+        m3.metric("Margen a Favor vs Tabla", f"${abs(diferencia_tm):,.2f} / TM", "Compra dentro de norma", delta_color="normal")
     else:
-        c3.metric("Ahorro vs Tabla ($)", f"${abs(sobreprecio_total):,.2f}", f"{diferencia_tm:,.2f} / TM bajo tabla", delta_color="normal")
-    
-    c4.metric("Ganancia Neta Lote", f"${ganancia_neta_lote:,.2f}", f"Margen: {(ganancia_neta_lote/costo_total_compra)*100:.1f}%" if costo_total_compra > 0 else "0%")
+        m3.metric("Sobreprecio / Re-pago", f"+${diferencia_tm:,.2f} / TM", "Por encima de tabla", delta_color="inverse")
 
-    # Detalle Factura IGV 2.5%
-    igv_monto = valor_total_venta_pactada * 0.025
-    factura_total = valor_total_venta_pactada + igv_monto
+    m4.metric("Ganancia Neta Proyectada", f"${ganancia_neta_lote:,.2f}")
 
-    st.markdown(f"📄 **Facturación Estimada con IGV (2.5%)**: Base Imponible: **${valor_total_venta_pactada:,.2f}** | IGV: **${igv_monto:,.2f}** | **Total Facturado: ${factura_total:,.2f}**")
+    # Mensaje de Diagnóstico / Semáforo
+    if precio_ofrecido <= precio_recomendado_tm:
+        st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
+    elif ganancia_neta_lote > 0:
+        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás ofreciendo **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
+    else:
+        st.error(f"🔴 **LOTE DEFICITARIO**: Tu precio ofrecido (${precio_ofrecido:,.2f}/TM) supera el valor de venta total. Genera una pérdida de **${abs(ganancia_neta_lote):,.2f}** si no se mezcla.")
+
+    # Detalle Facturación con IGV (2.5%)
+    igv_monto = valor_total_venta * 0.025
+    factura_total = valor_total_venta + igv_monto
+
+    st.markdown(f"📄 **Facturación Estimada (IGV 2.5%)**: Base Imponible: **${valor_total_venta:,.2f}** | IGV (2.5%): **${igv_monto:,.2f}** | **Total Factura: ${factura_total:,.2f}**")
 
     if st.button("➕ Confirmar y Guardar Lote para Blending"):
         lote_guardado = {
@@ -213,37 +188,34 @@ with tab1:
             "Ley Cu (%)": ley_cu,
             "Ley Au (g/t)": ley_au_gt,
             "Ley Ag (g/t)": ley_ag_gt,
-            "Precio Compra ($/TM)": precio_compra_pactado,
+            "Precio Compra ($/TM)": precio_ofrecido,
+            "Precio Recomendado ($/TM)": precio_recomendado_tm,
             "Costo Total ($)": costo_total_compra,
-            "Pagable Cu Tabla (%)": pag_cu_tabla,
-            "Pagable Au Tabla (%)": pag_au_tabla,
-            "Pagable Ag Tabla (%)": pag_ag_tabla,
             "Pagable Cu Pactado (%)": pag_cu_pactado,
             "Pagable Au Pactado (%)": pag_au_pactado,
             "Pagable Ag Pactado (%)": pag_ag_pactado,
-            "Valor Venta Tabla ($)": valor_total_venta_tabla,
-            "Valor Venta Pactado ($)": valor_total_venta_pactada,
+            "Valor Venta ($)": valor_total_venta,
             "Ganancia Directa ($)": ganancia_neta_lote,
-            "Sobreprecio ($)": sobreprecio_total
+            "Sobreprecio Total ($)": impacto_sobreprecio_total
         }
         st.session_state.lotes_comprados.append(lote_guardado)
-        st.success(f"¡{nombre_lote} guardado exitosamente en la lista de blending!")
+        st.success(f"¡{nombre_lote} añadido exitosamente a la lista de Blending!")
 
 # ------------------------------------------
 # TAB 2: BLENDING ÓPTIMO
 # ------------------------------------------
 with tab2:
-    st.subheader("🔄 optimización de Mezclas (Blending) para Ganancia Máxima")
+    st.subheader("🔄 Optimizador de Blending con Leyes Mínimas Obligatorias")
 
     if len(st.session_state.lotes_comprados) == 0:
-        st.warning("Aún no has agregado lotes. Ve a la pestaña 'Cotizar Lote Individual' para añadir lotes a la lista.")
+        st.warning("No hay lotes en cartera. Registra nuevos lotes en la pestaña 'Cotizar Lote Individual' para activar el optimizador.")
     else:
         df_lotes = pd.DataFrame(st.session_state.lotes_comprados)
-        st.markdown("### 📦 Lotes Disponibles en Cartera")
+        st.markdown("### 📦 Cartera Actual de Lotes Disponible")
         st.dataframe(
             df_lotes[[
                 "Lote", "TMS", "Ley Cu (%)", "Ley Au (g/t)", "Ley Ag (g/t)",
-                "Precio Compra ($/TM)", "Costo Total ($)", "Valor Venta Pactado ($)", "Ganancia Directa ($)"
+                "Precio Compra ($/TM)", "Precio Recomendado ($/TM)", "Costo Total ($)", "Valor Venta ($)", "Ganancia Directa ($)"
             ]],
             use_container_width=True
         )
@@ -253,23 +225,25 @@ with tab2:
             st.rerun()
 
         st.markdown("---")
-        st.markdown("### 🧪 Algoritmo de Blending Óptimo")
+        st.markdown("### 🎯 Metas de Leyes Mínimas Requeridas para la Mezcla")
+        
+        col_m1, col_m2, col_m3 = st.columns(3)
+        min_au_target = col_m1.number_input("Ley Mínima Oro Au (g/t)", value=3.0, step=0.1)
+        min_ag_target = col_m2.number_input("Ley Mínima Plata Ag (g/t)", value=350.0, step=10.0)
+        min_cu_target = col_m3.number_input("Ley Mínima Cobre Cu (%)", value=4.0, step=0.1)
 
         lotes_lista = st.session_state.lotes_comprados
-        n_lotes = len(lotes_lista)
 
-        # Función de ganancia a maximizar para el mezclado
+        # Función objetivo a maximizar (Ganancia de la Mezcla)
         def funcion_ganancia_blend(weights):
             tms_totales_b = np.sum(weights)
-            if tms_totales_b <= 1e-6:
+            if tms_totales_b <= 1e-5:
                 return 0.0
             
-            # Leyes Ponderadas
             cu_b = np.sum(weights * [l["Ley Cu (%)"] for l in lotes_lista]) / tms_totales_b
             au_b = np.sum(weights * [l["Ley Au (g/t)"] for l in lotes_lista]) / tms_totales_b
             ag_b = np.sum(weights * [l["Ley Ag (g/t)"] for l in lotes_lista]) / tms_totales_b
             
-            # Pagables por escala alcanzada en la mezcla
             pag_cu_b = obtener_pagable_cu(cu_b)
             pag_au_b = obtener_pagable_au(au_b)
             pag_ag_b = obtener_pagable_ag(ag_b)
@@ -283,110 +257,115 @@ with tab2:
             venta_b = val_tm_b * tms_totales_b
             costo_b = np.sum(weights * [l["Precio Compra ($/TM)"] for l in lotes_lista])
             
-            ganancia = venta_b - costo_b
-            return -ganancia  # Negativo para minimizar en scipy
+            return -(venta_b - costo_b)
 
-        bounds_b = [(0, l["TMS"]) for l in lotes_lista]
-        x0_b = [l["TMS"] for l in lotes_lista]
+        # Restricciones de Leyes Mínimas
+        constraints = [
+            {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Cu (%)"] - min_cu_target for l in lotes_lista])},
+            {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Au (g/t)"] - min_au_target for l in lotes_lista])},
+            {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Ag (g/t)"] - min_ag_target for l in lotes_lista])},
+            {'type': 'ineq', 'fun': lambda w: np.sum(w) - 0.01} # Al menos usar algo de tonelaje
+        ]
 
-        res_b = minimize(funcion_ganancia_blend, x0_b, bounds=bounds_b, method='Nelder-Mead')
+        bounds = [(0, l["TMS"]) for l in lotes_lista]
+        x0 = [l["TMS"] for l in lotes_lista]
 
-        if res_b.success or True:
-            tms_optimas = np.round(res_b.x, 2)
-            
-            # Construir tabla de resultado blending
-            df_opt = df_lotes.copy()
-            df_opt["TMS a Colocar"] = tms_optimas
-            df_opt["% Utilizado del Lote"] = np.round((tms_optimas / df_opt["TMS"]) * 100, 1)
-            df_opt["Costo Subtotal ($)"] = np.round(tms_optimas * df_opt["Precio Compra ($/TM)"], 2)
+        res = minimize(funcion_ganancia_blend, x0, method='SLSQP', bounds=bounds, constraints=constraints)
 
-            tms_blend_total = np.sum(tms_optimas)
-            
-            if tms_blend_total > 0:
-                cu_blend_pond = np.sum(tms_optimas * df_opt["Ley Cu (%)"]) / tms_blend_total
-                au_blend_pond = np.sum(tms_optimas * df_opt["Ley Au (g/t)"]) / tms_blend_total
-                ag_blend_pond = np.sum(tms_optimas * df_opt["Ley Ag (g/t)"]) / tms_blend_total
+        tms_optimas = np.round(res.x, 2) if res.success else np.zeros(len(lotes_lista))
+        tms_total_mezcla = np.sum(tms_optimas)
 
-                pag_cu_opt = obtener_pagable_cu(cu_blend_pond)
-                pag_au_opt = obtener_pagable_au(au_blend_pond)
-                pag_ag_opt = obtener_pagable_ag(ag_blend_pond)
+        if res.success and tms_total_mezcla > 0.01:
+            df_resultado_opt = df_lotes.copy()
+            df_resultado_opt["TMS a Colocar"] = tms_optimas
+            df_resultado_opt["% Utilizado del Lote"] = np.round((tms_optimas / df_resultado_opt["TMS"]) * 100, 1)
+            df_resultado_opt["Costo Subtotal ($)"] = np.round(tms_optimas * df_resultado_opt["Precio Compra ($/TM)"], 2)
 
-                val_tm_blend_opt = calcular_valor_por_tm(
-                    cu_blend_pond, au_blend_pond, ag_blend_pond,
-                    pag_cu_opt, pag_au_opt, pag_ag_opt,
-                    precio_cu_tm, precio_au_oz, precio_ag_oz
-                )
+            cu_blend = np.sum(tms_optimas * df_resultado_opt["Ley Cu (%)"]) / tms_total_mezcla
+            au_blend = np.sum(tms_optimas * df_resultado_opt["Ley Au (g/t)"]) / tms_total_mezcla
+            ag_blend = np.sum(tms_optimas * df_resultado_opt["Ley Ag (g/t)"]) / tms_total_mezcla
 
-                costo_total_blend = np.sum(df_opt["Costo Subtotal ($)"])
-                venta_total_blend = val_tm_blend_opt * tms_blend_total
-                ganancia_total_blend = venta_total_blend - costo_total_blend
-                venta_separada_lotes = df_lotes["Valor Venta Pactado ($)"].sum()
-                beneficio_extra_blending = venta_total_blend - venta_separada_lotes
+            pag_cu_opt = obtener_pagable_cu(cu_blend)
+            pag_au_opt = obtener_pagable_au(au_blend)
+            pag_ag_opt = obtener_pagable_ag(ag_blend)
 
-                st.success("✅ **Composición Óptima Calculada:**")
-                st.dataframe(
-                    df_opt[["Lote", "TMS", "TMS a Colocar", "% Utilizado del Lote", "Precio Compra ($/TM)", "Costo Subtotal ($)"]],
-                    use_container_width=True
-                )
+            val_tm_mezcla = calcular_valor_por_tm(
+                cu_blend, au_blend, ag_blend,
+                pag_cu_opt, pag_au_opt, pag_ag_opt,
+                precio_cu_tm, precio_au_oz, precio_ag_oz
+            )
 
-                st.markdown("#### 🧪 Leyes y Pagables Alcanzados en Mezcla")
-                lp1, lp2, lp3 = st.columns(3)
-                lp1.metric("Ley Cobre Cu (%)", f"{cu_blend_pond:.2f}%", f"Pagable Mezcla: {pag_cu_opt}%")
-                lp2.metric("Ley Oro Au (g/t)", f"{au_blend_pond:.2f} g/t", f"Pagable Mezcla: {pag_au_opt}%")
-                lp3.metric("Ley Plata Ag (g/t)", f"{ag_blend_pond:.2f} g/t", f"Pagable Mezcla: {pag_ag_opt}%")
+            costo_total_mezcla = np.sum(df_resultado_opt["Costo Subtotal ($)"])
+            venta_total_mezcla = val_tm_mezcla * tms_total_mezcla
+            ganancia_total_mezcla = venta_total_mezcla - costo_total_mezcla
 
-                st.markdown("---")
-                st.markdown("#### 💰 Balances Financieros del Blending")
-                fb1, fb2, fb3, fb4 = st.columns(4)
-                fb1.metric("TMS Totales Mezcladas", f"{tms_blend_total:,.2f} TMS")
-                fb2.metric("Costo Total Compra Lote", f"${costo_total_blend:,.2f}")
-                fb3.metric("Venta Total Mezcla", f"${venta_total_blend:,.2f}")
-                fb4.metric("Ganancia Neta Máxima", f"${ganancia_total_blend:,.2f}", f"Beneficio Extra Blending: +${beneficio_extra_blending:,.2f}")
+            st.success("✅ **Sugerencia de Blending Óptimo Calculada Exitosamente**")
+            st.markdown("#### 📋 Toneladas Exactas a Mezclar por Lote")
+            st.dataframe(
+                df_resultado_opt[["Lote", "TMS", "TMS a Colocar", "% Utilizado del Lote", "Precio Compra ($/TM)", "Costo Subtotal ($)"]],
+                use_container_width=True
+            )
+
+            st.markdown("#### 🧪 Leyes Resultantes de la Mezcla vs. Metas Mínimas")
+            l1, l2, l3 = st.columns(3)
+            l1.metric("Ley Cobre Cu (%)", f"{cu_blend:.2f}%", f"Meta: ≥{min_cu_target}% | Pagable: {pag_cu_opt}%")
+            l2.metric("Ley Oro Au (g/t)", f"{au_blend:.2f} g/t", f"Meta: ≥{min_au_target}g | Pagable: {pag_au_opt}%")
+            l3.metric("Ley Plata Ag (g/t)", f"{ag_blend:.2f} g/t", f"Meta: ≥{min_ag_target}g | Pagable: {pag_ag_opt}%")
+
+            st.markdown("---")
+            st.markdown("#### 💰 Balance Financiero Total de la Mezcla")
+            b1, b2, b3, b4 = st.columns(4)
+            b1.metric("Total TMS Mezcladas", f"{tms_total_mezcla:,.2f} TMS")
+            b2.metric("Costo Total de la Compra", f"${costo_total_mezcla:,.2f}")
+            b3.metric("Venta Total Proyectada", f"${venta_total_mezcla:,.2f}")
+            b4.metric("Ganancia Máxima Proyectada", f"${ganancia_total_mezcla:,.2f}", f"ROI: {(ganancia_total_mezcla/costo_total_mezcla)*100:.1f}%")
+
+        else:
+            st.error(f"⚠️ **Incapaz de cumplir con las metas mínimas**: Con los lotes actualmente registrados no es posible alcanzar simultáneamente Oro ≥ {min_au_target}g, Plata ≥ {min_ag_target}g y Cobre ≥ {min_cu_target}%. Agrega un lote con mayores leyes o ajusta las metas.")
 
 # ------------------------------------------
 # TAB 3: VISIÓN GENERAL DEL NEGOCIO
 # ------------------------------------------
 with tab3:
-    st.subheader("📊 Resumen Gerencial y Dashboard Amigable")
+    st.subheader("📊 Resumen Ejecutivo y Dashboard del Negocio")
 
     if len(st.session_state.lotes_comprados) == 0:
-        st.info("Sin datos para mostrar. Agrega lotes a la cartera para ver el análisis comercial global.")
+        st.info("Sin información acumulada. Inicia cotizando lotes para visualizar el panel de control.")
     else:
-        df_gen = pd.DataFrame(st.session_state.lotes_comprados)
+        df_dash = pd.DataFrame(st.session_state.lotes_comprados)
         
-        tms_totales_gen = df_gen["TMS"].sum()
-        inversion_total = df_gen["Costo Total ($)"].sum()
-        venta_directa_total = df_gen["Valor Venta Pactado ($)"].sum()
-        ganancia_directa_total = df_gen["Ganancia Directa ($)"].sum()
-        sobreprecio_total_acum = df_gen["Sobreprecio ($)"].sum()
+        tms_totales_dash = df_dash["TMS"].sum()
+        inversion_total_dash = df_dash["Costo Total ($)"].sum()
+        venta_total_dash = df_dash["Valor Venta ($)"].sum()
+        ganancia_total_dash = df_dash["Ganancia Directa ($)"].sum()
+         sobreprecio_acumulado = df_dash["Sobreprecio Total ($)"].sum()
 
-        st.markdown("### 📈 KPIs Principales de la Cartera")
+        st.markdown("### 📈 Indicadores Clave de Desempeño (KPIs)")
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Total Toneladas Compradas", f"{tms_totales_gen:,.2f} TMS")
-        k2.metric("Inversión Total en Compras", f"${inversion_total:,.2f}")
-        k3.metric("Venta Proyectada Cartera", f"${venta_directa_total:,.2f}")
-        k4.metric("Ganancia Directa Acumulada", f"${ganancia_directa_total:,.2f}", f"ROI: {(ganancia_directa_total/inversion_total)*100:.1f}%")
+        k1.metric("Volumen Comprado", f"{tms_totales_dash:,.2f} TMS")
+        k2.metric("Inversión en Mineral", f"${inversion_total_dash:,.2f}")
+        k3.metric("Venta Total Estimada", f"${venta_total_dash:,.2f}")
+        k4.metric("Ganancia Neta Total", f"${ganancia_total_dash:,.2f}", f"Margen: {(ganancia_total_dash/inversion_total_dash)*100:.1f}%")
 
         st.markdown("---")
-        
-        col_res1, col_res2 = st.columns(2)
-        
-        with col_res1:
-            st.markdown("### 🔎 Estado de Re-pagos sobre Tabla Oficial")
-            if sobreprecio_total_acum > 0:
-                st.warning(f"⚠️ **Atención Comercial**: Estás pagando **${sobreprecio_total_acum:,.2f}** por encima de la Tabla Oficial de Pagables en el total de tu cartera.")
+        c_left, c_right = st.columns(2)
+
+        with c_left:
+            st.markdown("### 🔍 Evaluación de Re-pagos por Lote")
+            if sobreprecio_acumulado > 0:
+                st.warning(f"Se ha pagado un acumulado de **${sobreprecio_acumulado:,.2f}** por encima de las tablas de referencia oficial para asegurar el mineral.")
             else:
-                st.success(f"🎉 **Gestión Óptima**: Compras dentro o por debajo de la Tabla Oficial con un ahorro de **${abs(sobreprecio_total_acum):,.2f}**.")
-            
+                st.success(f"Las compras se mantienen alineadas o por debajo de la Tabla Oficial (Ahorro de **${abs(sobreprecio_acumulado):,.2f}**).")
+
             st.dataframe(
-                df_gen[["Lote", "TMS", "Precio Compra ($/TM)", "Valor Venta Tabla ($)", "Sobreprecio ($)"]],
+                df_dash[["Lote", "TMS", "Precio Compra ($/TM)", "Precio Recomendado ($/TM)", "Sobreprecio Total ($)"]],
                 use_container_width=True
             )
 
-        with col_res2:
-            st.markdown("### 💡 Recomendaciones Comerciales")
+        with c_right:
+            st.markdown("### 💡 Recomendaciones Gerenciales")
             st.markdown("""
-            * **Estrategia de Blending**: Junta los lotes con leyes de Cobre cercanas a bordes de escala (ej. 3.8% Cu) con lotes de mayor ley (ej. 5.5% Cu) para saltar del **70% al 75% o 78% de pagable**.
-            * **Negociación de Sobreprecios**: Monitorea de cerca los lotes donde la columna `Sobreprecio ($)` sea alta. Asegúrate de compensar ese costo extra con volumen o con la subida de pagable en la mezcla final.
-            * **Facturación e IGV**: Recuerda que las proyecciones muestran el **IGV al 2.5%** para la emisión de facturas oficiales sobre la base imponible del valor de venta.
+            * **Estrategia de Pagables**: Al concentrar las mezclas para superar los **4% de Cu**, **3.0g de Au** y **350g de Ag**, accedes automáticamente a las mejores escalas de la tabla (75% pagable en Cu/Au/Ag).
+            * **Control de Compras Especiales**: Cuando compres minerales con sobreprecio, verifica en la pestaña de Blending cuántas toneladas de lote de alta ley necesitas para amortizar dicho re-pago.
+            * **Facturación**: La emisión de comprobantes se calcula considerando la **tasa de IGV del 2.5%** sobre la base imponible del concentrado comercializado.
             """)
