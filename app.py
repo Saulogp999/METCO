@@ -4,6 +4,25 @@ import numpy as np
 from scipy.optimize import minimize
 
 # ==========================================
+# CONFIGURACIÓN Y VALORES POR DEFECTO (EDITABLE)
+# ==========================================
+# Precios estándar de mercado
+PRECIO_CU_DEFAULT = 14200   # Precio Cobre en Dólares por Tonelada Métrica ($/TM)
+PRECIO_AU_DEFAULT = 4300   # Precio Oro en Dólares por Onza ($/oz)
+PRECIO_AG_DEFAULT = 63     # Precio Plata en Dólares por Onza ($/oz)
+
+# ==========================================
+# CONSTANTES Y LÍMITES POR DEFECTO
+# ==========================================
+IGV_TASA = 0.025            # Tasa de IGV (2.5%)
+CU_MIN_DEFAULT = 4.0        # % Ley Mínima Cu para Blending
+CU_MAX_DEFAULT = 5.5        # % Ley Máxima Cu para Blending
+AU_MIN_DEFAULT = 3.0        # g/t Ley Mínima Au para Blending
+AU_MAX_DEFAULT = 4.0        # g/t Ley Máxima Au para Blending
+AG_MIN_DEFAULT = 350.0      # g/t Ley Mínima Ag para Blending
+AG_MAX_DEFAULT = 400.0      # g/t Ley Máxima Ag para Blending
+
+# ==========================================
 # CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
