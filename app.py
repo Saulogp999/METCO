@@ -7,20 +7,20 @@ from scipy.optimize import minimize
 # CONFIGURACIÓN Y VALORES POR DEFECTO (EDITABLE)
 # ==========================================
 # Precios estándar de mercado
-PRECIO_CU_DEFAULT = 14200   # Precio Cobre en Dólares por Tonelada Métrica ($/TM)
+PRECIO_CU_DEFAULT = 14300   # Precio Cobre en Dólares por Tonelada Métrica ($/TM)
 PRECIO_AU_DEFAULT = 4300   # Precio Oro en Dólares por Onza ($/oz)
 PRECIO_AG_DEFAULT = 63     # Precio Plata en Dólares por Onza ($/oz)
 
-# ==========================================
-# CONSTANTES Y LÍMITES POR DEFECTO
-# ==========================================
-IGV_TASA = 0.025            # Tasa de IGV (2.5%)
-CU_MIN_DEFAULT = 4.0        # % Ley Mínima Cu para Blending
-CU_MAX_DEFAULT = 5.5        # % Ley Máxima Cu para Blending
-AU_MIN_DEFAULT = 3.0        # g/t Ley Mínima Au para Blending
-AU_MAX_DEFAULT = 4.0        # g/t Ley Máxima Au para Blending
-AG_MIN_DEFAULT = 350.0      # g/t Ley Mínima Ag para Blending
-AG_MAX_DEFAULT = 400.0      # g/t Ley Máxima Ag para Blending
+# Impuestos
+IGV_TASA_DEFAULT = 0.025     # Tasa de IGV (2.5%)
+
+# Límites predeterminados para Blending
+CU_MIN_DEFAULT = 4.0         # Ley Mínima Cobre Cu (%)
+CU_MAX_DEFAULT = 5.5         # Ley Máxima Cobre Cu (%)
+AU_MIN_DEFAULT = 3.0         # Ley Mínima Oro Au (g/t)
+AU_MAX_DEFAULT = 4.0         # Ley Máxima Oro Au (g/t)
+AG_MIN_DEFAULT = 350.0       # Ley Mínima Plata Ag (g/t)
+AG_MAX_DEFAULT = 400.0       # Ley Máxima Plata Ag (g/t)
 
 # ==========================================
 # CONFIGURACIÓN DE PÁGINA
@@ -94,9 +94,9 @@ def calcular_valor_por_tm(ley_cu, ley_au_gt, ley_ag_gt, pag_cu, pag_au, pag_ag, 
 # SIDEBAR - PARÁMETROS Y COTIZACIONES
 # ==========================================
 st.sidebar.header("🌐 Cotizaciones de Mercado")
-precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=9000.0, step=100.0)
-precio_au_oz = st.sidebar.number_input("Precio Oro ($/oz)", value=2400.0, step=10.0)
-precio_ag_oz = st.sidebar.number_input("Precio Plata ($/oz)", value=28.0, step=0.5)
+precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=PRECIO_CU_DEFAULT, step=100.0)
+precio_au_oz = st.sidebar.number_input("Precio Oro ($/oz)", value=PRECIO_AU_DEFAULT, step=10.0)
+precio_ag_oz = st.sidebar.number_input("Precio Plata ($/oz)", value=PRECIO_AG_DEFAULT, step=0.5)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📋 Tabla Oficial de Referencia")
@@ -131,12 +131,10 @@ with tab1:
         ley_au_gt = st.number_input("Ley Oro Au (g/t)", value=2.2, step=0.1)
         ley_ag_gt = st.number_input("Ley Plata Ag (g/t)", value=180.0, step=5.0)
 
-    # Pagables automáticos según tabla oficial
     pag_cu_tabla = obtener_pagable_cu(ley_cu)
     pag_au_tabla = obtener_pagable_au(ley_au_gt)
     pag_ag_tabla = obtener_pagable_ag(ley_ag_gt)
 
-    # Precio Recomendado de Compra
     precio_recomendado_tm = calcular_valor_por_tm(
         ley_cu, ley_au_gt, ley_ag_gt, 
         pag_cu_tabla, pag_au_tabla, pag_ag_tabla, 
@@ -157,7 +155,6 @@ with tab1:
             pag_ag_pactado = pag_ag_tabla
             st.info(f"Pagables Tabla -> Cu: {pag_cu_tabla}% | Au: {pag_au_tabla}% | Ag: {pag_ag_tabla}%")
 
-    # Valor de Venta con los pagables acordados
     valor_venta_pactada_tm = calcular_valor_por_tm(
         ley_cu, ley_au_gt, ley_ag_gt, 
         pag_cu_pactado, pag_au_pactado, pag_ag_pactado, 
@@ -168,7 +165,6 @@ with tab1:
     valor_total_venta = valor_venta_pactada_tm * tms
     ganancia_neta_lote = valor_total_venta - costo_total_compra
 
-    # Diferencia entre Precio Ofrecido y Precio Recomendado
     diferencia_tm = precio_ofrecido - precio_recomendado_tm
     impacto_sobreprecio_total = diferencia_tm * tms
 
@@ -186,7 +182,6 @@ with tab1:
 
     m4.metric("Ganancia Neta Proyectada", f"${ganancia_neta_lote:,.2f}")
 
-    # Mensaje de Diagnóstico / Semáforo
     if precio_ofrecido <= precio_recomendado_tm:
         st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
     elif ganancia_neta_lote > 0:
@@ -194,11 +189,10 @@ with tab1:
     else:
         st.error(f"🔴 **LOTE DEFICITARIO**: Tu precio ofrecido (${precio_ofrecido:,.2f}/TM) supera el valor de venta total. Genera una pérdida de **${abs(ganancia_neta_lote):,.2f}** si no se mezcla.")
 
-    # Detalle Facturación con IGV (2.5%)
-    igv_monto = valor_total_venta * 0.025
+    igv_monto = valor_total_venta * IGV_TASA_DEFAULT
     factura_total = valor_total_venta + igv_monto
 
-    st.markdown(f"📄 **Facturación Estimada (IGV 2.5%)**: Base Imponible: **${valor_total_venta:,.2f}** | IGV (2.5%): **${igv_monto:,.2f}** | **Total Factura: ${factura_total:,.2f}**")
+    st.markdown(f"📄 **Facturación Estimada (IGV {IGV_TASA_DEFAULT*100:.1f}%)**: Base Imponible: **${valor_total_venta:,.2f}** | IGV: **${igv_monto:,.2f}** | **Total Factura: ${factura_total:,.2f}**")
 
     if st.button("➕ Confirmar y Guardar Lote para Blending"):
         lote_guardado = {
@@ -248,18 +242,17 @@ with tab2:
         
         st.caption("Ajusta los límites inferiores y superiores. El optimizador mezclará lotes de alta y baja ley sin exceder los techos.")
         col_min1, col_min2, col_min3 = st.columns(3)
-        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=4.0, step=0.1)
-        min_au_target = col_min2.number_input("Ley Mínima Oro Au (g/t)", value=3.0, step=0.1)
-        min_ag_target = col_min3.number_input("Ley Mínima Plata Ag (g/t)", value=350.0, step=10.0)
+        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=CU_MIN_DEFAULT, step=0.1)
+        min_au_target = col_min2.number_input("Ley Mínima Oro Au (g/t)", value=AU_MIN_DEFAULT, step=0.1)
+        min_ag_target = col_min3.number_input("Ley Mínima Plata Ag (g/t)", value=AG_MIN_DEFAULT, step=10.0)
 
         col_max1, col_max2, col_max3 = st.columns(3)
-        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=5.5, step=0.1)
-        max_au_target = col_max2.number_input("Ley Máxima Oro Au (g/t)", value=4.0, step=0.1)
-        max_ag_target = col_max3.number_input("Ley Máxima Plata Ag (g/t)", value=400.0, step=10.0)
+        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=CU_MAX_DEFAULT, step=0.1)
+        max_au_target = col_max2.number_input("Ley Máxima Oro Au (g/t)", value=AU_MAX_DEFAULT, step=0.1)
+        max_ag_target = col_max3.number_input("Ley Máxima Plata Ag (g/t)", value=AG_MAX_DEFAULT, step=10.0)
 
         lotes_lista = st.session_state.lotes_comprados
 
-        # Función objetivo a maximizar (Ganancia de la Mezcla)
         def funcion_ganancia_blend(weights):
             tms_totales_b = np.sum(weights)
             if tms_totales_b <= 1e-5:
@@ -284,13 +277,10 @@ with tab2:
             
             return -(venta_b - costo_b)
 
-        # Restricciones de Mínimos y Máximos
         constraints = [
-            # Restricciones Mínimas
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Cu (%)"] - min_cu_target for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Au (g/t)"] - min_au_target for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [l["Ley Ag (g/t)"] - min_ag_target for l in lotes_lista])},
-            # Restricciones Máximas
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [max_cu_target - l["Ley Cu (%)"] for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [max_au_target - l["Ley Au (g/t)"] for l in lotes_lista])},
             {'type': 'ineq', 'fun': lambda w: np.sum(w * [max_ag_target - l["Ley Ag (g/t)"] for l in lotes_lista])},
