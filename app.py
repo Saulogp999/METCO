@@ -122,15 +122,15 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        nombre_lote = st.text_input("Nombre / Código del Lote", value=f"Lote {len(st.session_state.lotes_comprados) + 1}")
+        nombre_lote = st.text_input("Nombre del Lote", value=f"Lote {len(st.session_state.lotes_comprados) + 1}")
         tms = st.number_input("Toneladas Métricas Secas (TMS)", value=100.0, step=10.0)
         precio_ofrecido = st.number_input("Precio que Vas a Ofrecer / Comprar ($/TM)", value=430.0, step=10.0)
 
     with col2:
-        ley_cu = st.number_input("Ley Cobre Cu (%)", value=3.8, step=0.1)
         ley_au_gt = st.number_input("Ley Oro Au (g/t)", value=2.2, step=0.1)
         ley_ag_gt = st.number_input("Ley Plata Ag (g/t)", value=180.0, step=5.0)
-
+        ley_cu = st.number_input("Ley Cobre Cu (%)", value=3.8, step=0.1)
+    
     pag_cu_tabla = obtener_pagable_cu(ley_cu)
     pag_au_tabla = obtener_pagable_au(ley_au_gt)
     pag_ag_tabla = obtener_pagable_ag(ley_ag_gt)
