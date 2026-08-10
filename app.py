@@ -262,15 +262,15 @@ with tab2:
         
         st.caption("Ajusta los límites inferiores y superiores. El optimizador mezclará lotes de alta y baja ley sin exceder los techos.")
         col_min1, col_min2, col_min3 = st.columns(3)
-        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=float(CU_MIN_DEFAULT), step=0.1)
         min_au_target = col_min2.number_input("Ley Mínima Oro Au (g/t)", value=float(AU_MIN_DEFAULT), step=0.1)
         min_ag_target = col_min3.number_input("Ley Mínima Plata Ag (g/t)", value=float(AG_MIN_DEFAULT), step=10.0)
-
+        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=float(CU_MIN_DEFAULT), step=0.1)
+        
         col_max1, col_max2, col_max3 = st.columns(3)
-        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=float(CU_MAX_DEFAULT), step=0.1)
         max_au_target = col_max2.number_input("Ley Máxima Oro Au (g/t)", value=float(AU_MAX_DEFAULT), step=0.1)
         max_ag_target = col_max3.number_input("Ley Máxima Plata Ag (g/t)", value=float(AG_MAX_DEFAULT), step=10.0)
-
+        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=float(CU_MAX_DEFAULT), step=0.1)
+        
         lotes_lista = st.session_state.lotes_comprados
 
         def funcion_ganancia_blend(weights):
