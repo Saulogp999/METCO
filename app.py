@@ -2,25 +2,48 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from scipy.optimize import minimize
+import json
+import os
+
+# ==========================================
+# SISTEMA DE PERSISTENCIA (JSON LOCAL)
+# ==========================================
+JSON_FILE = "lotes_guardados.json"
+
+def cargar_lotes_persistentes():
+    if os.path.exists(JSON_FILE):
+        try:
+            with open(JSON_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+def guardar_lotes_persistentes(lotes):
+    try:
+        with open(JSON_FILE, "w", encoding="utf-8") as f:
+            json.dump(lotes, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Error al guardar los lotes en disco: {e}")
 
 # ==========================================
 # CONFIGURACIÓN Y VALORES POR DEFECTO (EDITABLE)
 # ==========================================
 # Precios estándar de mercado (Todos en FLOAT)
-PRECIO_CU_DEFAULT = 14300.0   # $/TM
 PRECIO_AU_DEFAULT = 4300.0   # $/oz
 PRECIO_AG_DEFAULT = 63.0     # $/oz
+PRECIO_CU_DEFAULT = 14300.0   # $/TM
 
 # Impuestos
 IGV_TASA_DEFAULT = 0.025     # Tasa de IGV (2.5%)
 
 # Límites predeterminados para Blending (Todos en FLOAT)
-CU_MIN_DEFAULT = 4.0         # %
-CU_MAX_DEFAULT = 5.5         # %
 AU_MIN_DEFAULT = 3.0         # g/t
 AU_MAX_DEFAULT = 4.0         # g/t
 AG_MIN_DEFAULT = 350.0       # g/t
 AG_MAX_DEFAULT = 400.0       # g/t
+CU_MIN_DEFAULT = 4.0         # %
+CU_MAX_DEFAULT = 5.5         # %
 
 # ==========================================
 # CONFIGURACIÓN DE PÁGINA
@@ -33,9 +56,9 @@ st.set_page_config(
 
 st.title("⚖️ Cotizador METCO")
 
-# Inicialización del estado global de lotes en cartera
+# Inicialización del estado global de lotes cargando datos guardados previamente
 if "lotes_comprados" not in st.session_state:
-    st.session_state.lotes_comprados = []
+    st.session_state.lotes_comprados = cargar_lotes_persistentes()
 
 # ==========================================
 # FUNCIONES DE TABLA OFICIAL DE PAGABLES
@@ -131,10 +154,10 @@ with tab1:
         ley_ag_gt = st.number_input("Ley Plata Ag (g/t)", value=180.0, step=5.0)
         ley_cu = st.number_input("Ley Cobre Cu (%)", value=3.8, step=0.1)
     
-    pag_cu_tabla = obtener_pagable_cu(ley_cu)
     pag_au_tabla = obtener_pagable_au(ley_au_gt)
     pag_ag_tabla = obtener_pagable_ag(ley_ag_gt)
-
+    pag_cu_tabla = obtener_pagable_cu(ley_cu)
+    
     precio_recomendado_tm = calcular_valor_por_tm(
         ley_cu, ley_au_gt, ley_ag_gt, 
         pag_cu_tabla, pag_au_tabla, pag_ag_tabla, 
@@ -185,32 +208,30 @@ with tab1:
     if precio_ofrecido <= precio_recomendado_tm:
         st.success(f"🟢 **EXCELENTE OFERTA**")
     elif ganancia_neta_lote > 0:
-        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás offrant **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
+        st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás ofreciendo **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
     else:
         st.error(f"🔴 **LOTE DEFICITARIO**: Tu precio ofrecido (${precio_ofrecido:,.2f}/TM) supera el valor de venta total. Genera una pérdida de **${abs(ganancia_neta_lote):,.2f}** si no se mezcla.")
-
-    igv_monto = valor_total_venta * float(IGV_TASA_DEFAULT)
-    factura_total = valor_total_venta + igv_monto
 
     if st.button("➕ Confirmar y Guardar Lote para Blending"):
         lote_guardado = {
             "Lote": nombre_lote,
             "TMS": tms,
-            "Ley Cu (%)": ley_cu,
             "Ley Au (g/t)": ley_au_gt,
             "Ley Ag (g/t)": ley_ag_gt,
+            "Ley Cu (%)": ley_cu,
             "Precio Compra ($/TM)": precio_ofrecido,
             "Precio Recomendado ($/TM)": precio_recomendado_tm,
             "Costo Total ($)": costo_total_compra,
-            "Pagable Cu Pactado (%)": pag_cu_pactado,
             "Pagable Au Pactado (%)": pag_au_pactado,
             "Pagable Ag Pactado (%)": pag_ag_pactado,
+            "Pagable Cu Pactado (%)": pag_cu_pactado,
             "Valor Venta ($)": valor_total_venta,
             "Ganancia Directa ($)": ganancia_neta_lote,
             "Sobreprecio Total ($)": impacto_sobreprecio_total
         }
         st.session_state.lotes_comprados.append(lote_guardado)
-        st.success(f"¡{nombre_lote} añadido exitosamente a la lista de Blending!")
+        guardar_lotes_persistentes(st.session_state.lotes_comprados)
+        st.success(f"¡{nombre_lote} añadido y guardado permanentemente para futuras sesiones!")
 
 # ------------------------------------------
 # TAB 2: BLENDING ÓPTIMO
@@ -233,6 +254,7 @@ with tab2:
 
         if st.button("🗑️ Vaciar Cartera de Lotes"):
             st.session_state.lotes_comprados = []
+            guardar_lotes_persistentes([])
             st.rerun()
 
         st.markdown("---")
