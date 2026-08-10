@@ -183,7 +183,7 @@ with tab1:
     m4.metric("Ganancia Neta Proyectada", f"${ganancia_neta_lote:,.2f}")
 
     if precio_ofrecido <= precio_recomendado_tm:
-        st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
+        st.success(f"🟢 **EXCELENTE OFERTA**")
     elif ganancia_neta_lote > 0:
         st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás offrant **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
     else:
@@ -191,8 +191,6 @@ with tab1:
 
     igv_monto = valor_total_venta * float(IGV_TASA_DEFAULT)
     factura_total = valor_total_venta + igv_monto
-
-    st.markdown(f"📄 **Facturación Estimada (IGV {IGV_TASA_DEFAULT*100:.1f}%)**: Base Imponible: **${valor_total_venta:,.2f}** | IGV: **${igv_monto:,.2f}** | **Total Factura: ${factura_total:,.2f}**")
 
     if st.button("➕ Confirmar y Guardar Lote para Blending"):
         lote_guardado = {
@@ -387,5 +385,4 @@ with tab3:
             st.markdown("""
             * **Estrategia de Blending con Rango Techo**: Limitar la mezcla a **5.5% Cu**, **4.0 g/t Au** y **400 g/t Ag** evita 'regalar' ley en la venta al cliente final y fuerza al algoritmo a diluir y digerir los lotes de baja ley que tienes comprados.
             * **Control de Compras Especiales**: Cuando compres minerales con sobreprecio, verifica en la pestaña de Blending cuántas toneladas de lote de alta ley necesitas para amortizar dicho re-pago.
-            * **Facturación**: La emisión de comprobantes se calcula considerando la **tasa de IGV del 2.5%** sobre la base imponible del concentrado comercializado.
             """)
