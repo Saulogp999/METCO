@@ -41,7 +41,7 @@ IGV_TASA_DEFAULT = 0.025     # Tasa de IGV (2.5%)
 AU_MIN_DEFAULT = 3.0         # g/t
 AU_MAX_DEFAULT = 4.0         # g/t
 AG_MIN_DEFAULT = 350.0       # g/t
-AG_MAX_DEFAULT = 400.0       # g/t
+AG_MAX_DEFAULT = 500.0       # g/t
 CU_MIN_DEFAULT = 4.0         # %
 CU_MAX_DEFAULT = 5.5         # %
 
@@ -70,7 +70,7 @@ def obtener_pagable_cu(ley_cu):
         return 60.0
     elif ley_cu <= 3.0:
         return 65.0
-    elif ley_cu < 4.0:
+    elif ley_cu < 3.999:
         return 70.0
     elif ley_cu <= 5.5:
         return 75.0
@@ -98,7 +98,7 @@ def obtener_pagable_au(ley_au_gt):
         return 0.0
     elif ley_au_gt <= 1.5:
         return 60.0
-    elif ley_au_gt <= 2.0:
+    elif ley_au_gt <= 1.999:
         return 69.0
     else:
         return 75.0
@@ -117,13 +117,13 @@ def calcular_valor_por_tm(ley_cu, ley_au_gt, ley_ag_gt, pag_cu, pag_au, pag_ag, 
 # SIDEBAR - PARÁMETROS Y COTIZACIONES
 # ==========================================
 st.sidebar.header("🌐 Cotizaciones de Mercado")
-precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=float(PRECIO_CU_DEFAULT), step=100.0)
 precio_au_oz = st.sidebar.number_input("Precio Oro ($/oz)", value=float(PRECIO_AU_DEFAULT), step=10.0)
 precio_ag_oz = st.sidebar.number_input("Precio Plata ($/oz)", value=float(PRECIO_AG_DEFAULT), step=0.5)
+precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=float(PRECIO_CU_DEFAULT), step=100.0)
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📋 Tabla Oficial de Referencia")
-st.sidebar.caption("• **Cu**: ≤1%: 0% | 1-2%: 60% | 2-3%: 65% | 3-4%: 70% | 4-5.5%: 75% | 5.5-7%: 78% | >7%: 81%")
+st.sidebar.caption("• **Cu**: ≤1%: 0% | 1-2%: 60% | 2-3%: 65% | 3-3.99%: 70% | 4-5.5%: 75% | 5.5-7%: 78% | >7%: 81%")
 st.sidebar.caption("• **Ag (g/t)**: ≤100: 0% | 101-120: 50% | 121-150: 60% | 151-199: 65% | 200-300: 72% | >300: 75%")
 st.sidebar.caption("• **Au (g/t)**: ≤1.0: 0% | 1.01-1.5: 60% | 1.51-2.0: 69% | >2.0: 75%")
 
@@ -169,13 +169,13 @@ with tab1:
         modificar_pagables = st.checkbox("Ajustar pagables pactados manualmente")
         
         if modificar_pagables:
-            pag_cu_pactado = st.number_input("Pagable Cu Pactado (%)", value=75.0, step=1.0)
             pag_au_pactado = st.number_input("Pagable Au Pactado (%)", value=69.0, step=1.0)
             pag_ag_pactado = st.number_input("Pagable Ag Pactado (%)", value=65.0, step=1.0)
+            pag_cu_pactado = st.number_input("Pagable Cu Pactado (%)", value=75.0, step=1.0)
         else:
-            pag_cu_pactado = float(pag_cu_tabla)
             pag_au_pactado = float(pag_au_tabla)
             pag_ag_pactado = float(pag_ag_tabla)
+            pag_cu_pactado = float(pag_cu_tabla)
             st.info(f"Pagables Tabla -> Cu: {pag_cu_tabla}% | Au: {pag_au_tabla}% | Ag: {pag_ag_tabla}%")
 
     valor_venta_pactada_tm = calcular_valor_por_tm(
@@ -337,7 +337,7 @@ with tab2:
 
             costo_total_mezcla = np.sum(df_resultado_opt["Costo Subtotal ($)"])
             venta_total_mezcla = val_tm_mezcla * tms_total_mezcla
-            ganancia_total_mezcla = venta_total_mezcla - costo_total_mezcla
+            ganancia_total_mezcla = venta_total_mezcla - costo_total_mezcla - 0.15*1.18*tms_total_mezcla - tms_total_mezcla*12.57
 
             st.success("✅ **Composición Óptima de Blending Calculada Exitosamente**")
             st.markdown("#### 📋 Toneladas Exactas a Mezclar por Lote")
