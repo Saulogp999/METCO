@@ -186,7 +186,7 @@ with tab1:
 
     costo_total_compra = precio_ofrecido * tms
     valor_total_venta = valor_venta_pactada_tm * tms
-    ganancia_neta_lote = valor_total_venta - costo_total_compra
+    ganancia_neta_lote = valor_total_venta - costo_total_compra - 0.15*1.18*tms_total_mezcla - tms_total_mezcla*12.57
 
     diferencia_tm = precio_ofrecido - precio_recomendado_tm
     impacto_sobreprecio_total = diferencia_tm * tms
