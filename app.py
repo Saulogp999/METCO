@@ -49,12 +49,12 @@ CU_MAX_DEFAULT = 5.5         # %
 # CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Cotizador Minero y Blending Óptimo - METCO",
+    page_title="Cotizador METCO",
     page_icon="⚖️",
     layout="wide"
 )
 
-st.title("⚖️ Cotizador Minero y Blending Óptimo")
+st.title("⚖️ Cotizador METCO")
 
 # Inicialización del estado global de lotes cargando datos guardados previamente
 if "lotes_comprados" not in st.session_state:
