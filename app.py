@@ -42,11 +42,11 @@ def obtener_precios_en_vivo():
         
         # Oro
         hist_au = tickers.tickers["GC=F"].history(period="1d")
-        p_au = float(hist_au["Close"].iloc[-1]) if not hist_au.empty else 2400.0
+        p_au = float(hist_au["Close"].iloc[-1]) if not hist_au.empty else 4500.0
         
         # Plata
         hist_ag = tickers.tickers["SI=F"].history(period="1d")
-        p_ag = float(hist_ag["Close"].iloc[-1]) if not hist_ag.empty else 28.0
+        p_ag = float(hist_ag["Close"].iloc[-1]) if not hist_ag.empty else 65.0
         
         # Cobre ($/lb a $/TM)
         hist_cu = tickers.tickers["HG=F"].history(period="1d")
@@ -55,7 +55,7 @@ def obtener_precios_en_vivo():
         
         return round(p_cu_tm, 2), round(p_au, 2), round(p_ag, 2)
     except Exception:
-        return 9000.0, 2400.0, 28.0
+        return 14500.0, 4500.0, 65.0
 
 # ==========================================
 # CONFIGURACIÓN Y VALORES POR DEFECTO (EDITABLE)
@@ -64,35 +64,35 @@ def obtener_precios_en_vivo():
 IGV_TASA_DEFAULT = 0.025     # Tasa de IGV (2.5%)
 
 # Límites predeterminados para Blending (Todos en FLOAT)
-CU_MIN_DEFAULT = 4.0         # %
-CU_MAX_DEFAULT = 5.5         # %
 AU_MIN_DEFAULT = 3.0         # g/t
 AU_MAX_DEFAULT = 4.0         # g/t
 AG_MIN_DEFAULT = 350.0       # g/t
 AG_MAX_DEFAULT = 400.0       # g/t
+CU_MIN_DEFAULT = 4.0         # %
+CU_MAX_DEFAULT = 5.5         # %
 
 # ==========================================
 # CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Cotizador Minero y Blending Óptimo - CUNI",
+    page_title="Cotizador METCO - GRUPO GY",
     page_icon="⚖️",
     layout="wide"
 )
 
-st.title("⚖️ Cotizador Minero, Precio Recomendado y Blending Óptimo")
+st.title("⚖️ Cotizador METCO - GRUPO GY")
 
 # Inicialización de estado global
 if "lotes_comprados" not in st.session_state:
     st.session_state.lotes_comprados = cargar_lotes_persistentes()
 
-if "precio_cu" not in st.session_state:
-    st.session_state.precio_cu = 9000.0
 if "precio_au" not in st.session_state:
-    st.session_state.precio_au = 2400.0
+    st.session_state.precio_au = 4500.0
 if "precio_ag" not in st.session_state:
-    st.session_state.precio_ag = 28.0
-
+    st.session_state.precio_ag = 65.0
+if "precio_cu" not in st.session_state:
+    st.session_state.precio_cu = 14500.0
+    
 # ==========================================
 # FUNCIONES DE TABLA OFICIAL DE PAGABLES
 # ==========================================
@@ -151,28 +151,28 @@ def calcular_valor_por_tm(ley_cu, ley_au_gt, ley_ag_gt, pag_cu, pag_au, pag_ag, 
 # ==========================================
 st.sidebar.header("🌐 Cotizaciones de Mercado")
 
-if st.sidebar.button("🔄 Actualizar Precios en Vivo (Kitco / Mercado)"):
+if st.sidebar.button("🔄 Actualizar Precios en Vivo (Mercado)"):
     with st.sidebar.status("Descargando cotizaciones oficiales..."):
-        p_cu_live, p_au_live, p_ag_live = obtener_precios_en_vivo()
-        st.session_state.precio_cu = p_cu_live
+        p_au_live, p_ag_live, p_cu_live = obtener_precios_en_vivo()
         st.session_state.precio_au = p_au_live
         st.session_state.precio_ag = p_ag_live
+        st.session_state.precio_cu = p_cu_live
     st.sidebar.success("¡Precios de mercado actualizados!")
 
-precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=float(st.session_state.precio_cu), step=50.0)
 precio_au_oz = st.sidebar.number_input("Precio Oro ($/oz)", value=float(st.session_state.precio_au), step=10.0)
 precio_ag_oz = st.sidebar.number_input("Precio Plata ($/oz)", value=float(st.session_state.precio_ag), step=0.5)
+precio_cu_tm = st.sidebar.number_input("Precio Cobre ($/TM)", value=float(st.session_state.precio_cu), step=50.0)
 
 # Guardar valores si el usuario los ajusta a mano en el sidebar
-st.session_state.precio_cu = precio_cu_tm
 st.session_state.precio_au = precio_au_oz
 st.session_state.precio_ag = precio_ag_oz
+st.session_state.precio_cu = precio_cu_tm
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📋 Tabla Oficial de Referencia")
-st.sidebar.caption("• **Cu**: ≤1%: 0% | 1-2%: 60% | 2-3%: 65% | 3-4%: 70% | 4-5.5%: 75% | 5.5-7%: 78% | >7%: 81%")
 st.sidebar.caption("• **Ag (g/t)**: ≤100: 0% | 101-120: 50% | 121-150: 60% | 151-199: 65% | 200-300: 72% | >300: 75%")
 st.sidebar.caption("• **Au (g/t)**: ≤1.0: 0% | 1.01-1.5: 60% | 1.51-2.0: 69% | >2.0: 75%")
+st.sidebar.caption("• **Cu**: ≤1%: 0% | 1-2%: 60% | 2-3%: 65% | 3-4%: 70% | 4-5.5%: 75% | 5.5-7%: 78% | >7%: 81%")
 
 # ==========================================
 # PESTAÑAS DE LA APLICACIÓN
@@ -180,7 +180,7 @@ st.sidebar.caption("• **Au (g/t)**: ≤1.0: 0% | 1.01-1.5: 60% | 1.51-2.0: 69%
 tab1, tab2, tab3 = st.tabs([
     "🎯 Cotizar Lote Individual", 
     "🔄 Blending Óptimo", 
-    "📊 Visión General del Negocio"
+    "📊 RESUMEN"
 ])
 
 # ------------------------------------------
@@ -197,18 +197,18 @@ with tab1:
         precio_ofrecido = st.number_input("Precio que Vas a Ofrecer / Comprar ($/TM)", value=430.0, step=10.0)
 
     with col2:
-        ley_cu = st.number_input("Ley Cobre Cu (%)", value=3.8, step=0.1)
         ley_au_gt = st.number_input("Ley Oro Au (g/t)", value=2.2, step=0.1)
         ley_ag_gt = st.number_input("Ley Plata Ag (g/t)", value=180.0, step=5.0)
-
-    pag_cu_tabla = obtener_pagable_cu(ley_cu)
+        ley_cu = st.number_input("Ley Cobre Cu (%)", value=3.8, step=0.1)
+        
     pag_au_tabla = obtener_pagable_au(ley_au_gt)
     pag_ag_tabla = obtener_pagable_ag(ley_ag_gt)
-
+    pag_cu_tabla = obtener_pagable_cu(ley_cu)
+    
     precio_recomendado_tm = calcular_valor_por_tm(
-        ley_cu, ley_au_gt, ley_ag_gt, 
-        pag_cu_tabla, pag_au_tabla, pag_ag_tabla, 
-        precio_cu_tm, precio_au_oz, precio_ag_oz
+        ley_au_gt, ley_ag_gt, ley_cu,
+        pag_au_tabla, pag_ag_tabla, pag_cu_tabla,
+        precio_au_oz, precio_ag_oz, precio_cu_tm,
     )
 
     with col3:
@@ -216,19 +216,19 @@ with tab1:
         modificar_pagables = st.checkbox("Ajustar pagables pactados manualmente")
         
         if modificar_pagables:
-            pag_cu_pactado = st.number_input("Pagable Cu Pactado (%)", value=75.0, step=1.0)
             pag_au_pactado = st.number_input("Pagable Au Pactado (%)", value=69.0, step=1.0)
             pag_ag_pactado = st.number_input("Pagable Ag Pactado (%)", value=65.0, step=1.0)
+            pag_cu_pactado = st.number_input("Pagable Cu Pactado (%)", value=75.0, step=1.0)
         else:
-            pag_cu_pactado = float(pag_cu_tabla)
             pag_au_pactado = float(pag_au_tabla)
             pag_ag_pactado = float(pag_ag_tabla)
+            pag_cu_pactado = float(pag_cu_tabla)
             st.info(f"Pagables Tabla -> Cu: {pag_cu_tabla}% | Au: {pag_au_tabla}% | Ag: {pag_ag_tabla}%")
 
     valor_venta_pactada_tm = calcular_valor_por_tm(
-        ley_cu, ley_au_gt, ley_ag_gt, 
-        pag_cu_pactado, pag_au_pactado, pag_ag_pactado, 
-        precio_cu_tm, precio_au_oz, precio_ag_oz
+        ley_au_gt, ley_ag_gt, ley_cu,
+        pag_au_pactado, pag_ag_pactado, pag_cu_pactado,
+        precio_au_oz, precio_ag_oz, precio_cu_tm,
     )
 
     costo_total_compra = precio_ofrecido * tms
@@ -315,29 +315,29 @@ with tab2:
                     nombre = str(row["Lote"])
                     tms_val = float(row["TMS"])
                     p_compra = float(row["Precio Compra ($/TM)"])
-                    cu_val = float(row["Ley Cu (%)"])
                     au_val = float(row["Ley Au (g/t)"])
                     ag_val = float(row["Ley Ag (g/t)"])
+                    cu_val = float(row["Ley Cu (%)"])
                     
-                    p_cu_tab = obtener_pagable_cu(cu_val)
                     p_au_tab = obtener_pagable_au(au_val)
                     p_ag_tab = obtener_pagable_ag(ag_val)
+                    p_cu_tab = obtener_pagable_cu(cu_val)
                     
                     p_rec = calcular_valor_por_tm(
-                        cu_val, au_val, ag_val,
-                        p_cu_tab, p_au_tab, p_ag_tab,
-                        precio_cu_tm, precio_au_oz, precio_ag_oz
+                        au_val, ag_val, cu_val,
+                        p_au_tab, p_ag_tab, p_cu_tab,
+                        precio_au_oz, precio_ag_oz, precio_cu_tm,
                     )
                     
                     orig_lote = st.session_state.lotes_comprados[idx] if idx < len(st.session_state.lotes_comprados) else {}
-                    pag_cu_pac = float(orig_lote.get("Pagable Cu Pactado (%)", p_cu_tab))
                     pag_au_pac = float(orig_lote.get("Pagable Au Pactado (%)", p_au_tab))
                     pag_ag_pac = float(orig_lote.get("Pagable Ag Pactado (%)", p_ag_tab))
+                    pag_cu_pac = float(orig_lote.get("Pagable Cu Pactado (%)", p_cu_tab))
                     
                     val_venta_tm = calcular_valor_por_tm(
-                        cu_val, au_val, ag_val,
-                        pag_cu_pac, pag_au_pac, pag_ag_pac,
-                        precio_cu_tm, precio_au_oz, precio_ag_oz
+                        au_val, ag_val, cu_val,
+                        pag_au_pac, pag_ag_pac, pag_cu_pac,
+                        precio_au_oz, precio_ag_oz, precio_cu_tm
                     )
                     
                     c_tot = p_compra * tms_val
@@ -378,16 +378,16 @@ with tab2:
         st.markdown("### 🎯 Definición de Rangos de Leyes para la Mezcla")
         
         st.caption("Ajusta los límites inferiores y superiores. El optimizador mezclará lotes de alta y baja ley sin exceder los techos.")
-        col_min1, col_min2, col_min3 = st.columns(3)
-        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=float(CU_MIN_DEFAULT), step=0.1)
+        col_min2, col_min3, col_min1 = st.columns(3)
         min_au_target = col_min2.number_input("Ley Mínima Oro Au (g/t)", value=float(AU_MIN_DEFAULT), step=0.1)
         min_ag_target = col_min3.number_input("Ley Mínima Plata Ag (g/t)", value=float(AG_MIN_DEFAULT), step=10.0)
-
-        col_max1, col_max2, col_max3 = st.columns(3)
-        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=float(CU_MAX_DEFAULT), step=0.1)
+        min_cu_target = col_min1.number_input("Ley Mínima Cobre Cu (%)", value=float(CU_MIN_DEFAULT), step=0.1)
+        
+        col_max2, col_max3, col_max1 = st.columns(3)
         max_au_target = col_max2.number_input("Ley Máxima Oro Au (g/t)", value=float(AU_MAX_DEFAULT), step=0.1)
         max_ag_target = col_max3.number_input("Ley Máxima Plata Ag (g/t)", value=float(AG_MAX_DEFAULT), step=10.0)
-
+        max_cu_target = col_max1.number_input("Ley Máxima Cobre Cu (%)", value=float(CU_MAX_DEFAULT), step=0.1)
+        
         lotes_lista = st.session_state.lotes_comprados
 
         def funcion_ganancia_blend(weights):
@@ -395,18 +395,18 @@ with tab2:
             if tms_totales_b <= 1e-5:
                 return 0.0
             
-            cu_b = np.sum(weights * [l["Ley Cu (%)"] for l in lotes_lista]) / tms_totales_b
             au_b = np.sum(weights * [l["Ley Au (g/t)"] for l in lotes_lista]) / tms_totales_b
             ag_b = np.sum(weights * [l["Ley Ag (g/t)"] for l in lotes_lista]) / tms_totales_b
+            cu_b = np.sum(weights * [l["Ley Cu (%)"] for l in lotes_lista]) / tms_totales_b
             
-            pag_cu_b = obtener_pagable_cu(cu_b)
             pag_au_b = obtener_pagable_au(au_b)
             pag_ag_b = obtener_pagable_ag(ag_b)
+            pag_cu_b = obtener_pagable_cu(cu_b)
             
             val_tm_b = calcular_valor_por_tm(
-                cu_b, au_b, ag_b, 
-                pag_cu_b, pag_au_b, pag_ag_b, 
-                precio_cu_tm, precio_au_oz, precio_ag_oz
+                au_b, ag_b, cu_b,
+                pag_au_b, pag_ag_b, pag_cu_b,
+                precio_au_oz, precio_ag_oz, precio_cu_tm,
             )
             
             venta_b = val_tm_b * tms_totales_b
@@ -441,18 +441,18 @@ with tab2:
             df_resultado_opt["% Utilizado del Lote"] = np.round((tms_optimas / df_resultado_opt["TMS"]) * 100, 1)
             df_resultado_opt["Costo Subtotal ($)"] = np.round(tms_optimas * df_resultado_opt["Precio Compra ($/TM)"], 2)
 
-            cu_blend = np.sum(tms_optimas * df_resultado_opt["Ley Cu (%)"]) / tms_total_mezcla
             au_blend = np.sum(tms_optimas * df_resultado_opt["Ley Au (g/t)"]) / tms_total_mezcla
             ag_blend = np.sum(tms_optimas * df_resultado_opt["Ley Ag (g/t)"]) / tms_total_mezcla
-
-            pag_cu_opt = obtener_pagable_cu(cu_blend)
+            cu_blend = np.sum(tms_optimas * df_resultado_opt["Ley Cu (%)"]) / tms_total_mezcla
+            
             pag_au_opt = obtener_pagable_au(au_blend)
             pag_ag_opt = obtener_pagable_ag(ag_blend)
-
+            pag_cu_opt = obtener_pagable_cu(cu_blend)
+            
             val_tm_mezcla = calcular_valor_por_tm(
-                cu_blend, au_blend, ag_blend,
-                pag_cu_opt, pag_au_opt, pag_ag_opt,
-                precio_cu_tm, precio_au_oz, precio_ag_oz
+                au_blend, ag_blend, cu_blend,
+                pag_au_opt, pag_ag_opt, pag_cu_opt,
+                precio_au_oz, precio_ag_oz, precio_cu_tm,
             )
 
             costo_total_mezcla = np.sum(df_resultado_opt["Costo Subtotal ($)"])
@@ -469,11 +469,11 @@ with tab2:
             )
 
             st.markdown("#### 🧪 Leyes Resultantes de la Mezcla vs. Rangos Permitidos")
-            l1, l2, l3 = st.columns(3)
-            l1.metric("Ley Cobre Cu (%)", f"{cu_blend:.2f}%", f"Rango: {min_cu_target}% - {max_cu_target}% | Pagable: {pag_cu_opt}%")
+            l2, l3, l1 = st.columns(3)
             l2.metric("Ley Oro Au (g/t)", f"{au_blend:.2f} g/t", f"Rango: {min_au_target}g - {max_au_target}g | Pagable: {pag_au_opt}%")
             l3.metric("Ley Plata Ag (g/t)", f"{ag_blend:.2f} g/t", f"Rango: {min_ag_target}g - {max_ag_target}g | Pagable: {pag_ag_opt}%")
-
+            l1.metric("Ley Cobre Cu (%)", f"{cu_blend:.2f}%", f"Rango: {min_cu_target}% - {max_cu_target}% | Pagable: {pag_cu_opt}%")
+            
             st.markdown("---")
             st.markdown("#### 💰 Balance Financiero Total de la Mezcla")
             b1, b2, b3, b4 = st.columns(4)
@@ -486,10 +486,10 @@ with tab2:
             st.error(f"⚠️ **Incapaz de cumplir con los rangos definidos**: Con los lotes actualmente registrados no es posible lograr una mezcla que esté simultáneamente dentro de los rangos de Cobre ({min_cu_target}% - {max_cu_target}%), Oro ({min_au_target}g - {max_au_target}g) y Plata ({min_ag_target}g - {max_ag_target}g). Revisa las leyes de tus lotes o amplía los rangos.")
 
 # ------------------------------------------
-# TAB 3: VISIÓN GENERAL DEL NEGOCIO
+# TAB 3: RESUMEN
 # ------------------------------------------
 with tab3:
-    st.subheader("📊 Resumen Ejecutivo y Dashboard del Negocio")
+    st.subheader("📊 RESUMEN")
 
     if len(st.session_state.lotes_comprados) == 0:
         st.info("Sin información acumulada. Inicia cotizando lotes para visualizar el panel de control.")
