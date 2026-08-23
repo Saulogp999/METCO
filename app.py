@@ -53,9 +53,9 @@ def obtener_precios_en_vivo():
         p_cu_lb = float(hist_cu["Close"].iloc[-1]) if not hist_cu.empty else 4.10
         p_cu_tm = p_cu_lb * 2204.622
         
-        return round(p_cu_tm, 2), round(p_au, 2), round(p_ag, 2)
+        return round(p_au, 2), round(p_ag, 2), round(p_cu_tm, 2)
     except Exception:
-        return 14500.0, 4500.0, 65.0
+        return 4500.0, 65.0, 14500.0
 
 # ==========================================
 # CONFIGURACIÓN Y VALORES POR DEFECTO (EDITABLE)
