@@ -37,11 +37,11 @@ def obtener_precios_en_vivo():
         
         # 1. Oro (Au)
         hist_au = tickers.tickers["GC=F"].history(period="1d")
-        p_au = float(hist_au["Close"].iloc[-1]) if not hist_au.empty else 2400.0
+        p_au = float(hist_au["Close"].iloc[-1]) if not hist_au.empty else 4500.0
         
         # 2. Plata (Ag)
         hist_ag = tickers.tickers["SI=F"].history(period="1d")
-        p_ag = float(hist_ag["Close"].iloc[-1]) if not hist_ag.empty else 28.0
+        p_ag = float(hist_ag["Close"].iloc[-1]) if not hist_ag.empty else 65.0
         
         # 3. Cobre (Cu) ($/lb a $/TM)
         hist_cu = tickers.tickers["HG=F"].history(period="1d")
@@ -50,16 +50,16 @@ def obtener_precios_en_vivo():
         
         return round(p_au, 2), round(p_ag, 2), round(p_cu_tm, 2)
     except Exception:
-        return 2400.0, 28.0, 9000.0
+        return 4500.0, 65.0, 14300.0
 
 # ==========================================
 # CONFIGURACIÓN Y VALORES POR DEFECTO (EDITABLE)
 # Orden de Prelación: 1. Oro (Au), 2. Plata (Ag), 3. Cobre (Cu)
 # ==========================================
 # Precios estándar de mercado
-PRECIO_AU_DEFAULT = 2400.0   # $/oz
-PRECIO_AG_DEFAULT = 28.0     # $/oz
-PRECIO_CU_DEFAULT = 9000.0   # $/TM
+PRECIO_AU_DEFAULT = 4500.0   # $/oz
+PRECIO_AG_DEFAULT = 65.0     # $/oz
+PRECIO_CU_DEFAULT = 14500.0   # $/TM
 
 # Impuestos
 IGV_TASA_DEFAULT = 0.025     # Tasa de IGV (2.5%)
@@ -76,7 +76,7 @@ CU_MAX_DEFAULT = 5.5         # %
 # CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Cotizador Minero y Blending Óptimo - CUNI",
+    page_title="Cotizador METCO - GY",
     page_icon="⚖️",
     layout="wide"
 )
