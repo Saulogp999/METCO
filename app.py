@@ -81,7 +81,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("⚖️ Cotizador Minero, Precio Recomendado y Blending Óptimo")
+st.title("⚖️ Cotizador METCO - GY")
 
 # Inicialización de estado global
 if "lotes_comprados" not in st.session_state:
