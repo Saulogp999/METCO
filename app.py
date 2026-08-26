@@ -152,7 +152,7 @@ def calcular_valor_por_tm(ley_au_gt, ley_ag_gt, ley_cu, pag_au, pag_ag, pag_cu, 
 # ==========================================
 st.sidebar.header("🌐 Cotizaciones de Mercado")
 
-if st.sidebar.button("🔄 Actualizar Precios en Vivo (Kitco / Mercado)"):
+if st.sidebar.button("🔄 Actualizar Precios en Vivo (Mercado)"):
     with st.sidebar.status("Descargando cotizaciones oficiales..."):
         p_au_live, p_ag_live, p_cu_live = obtener_precios_en_vivo()
         st.session_state.precio_au = p_au_live
@@ -244,16 +244,10 @@ with tab1:
     st.markdown("---")
     st.subheader("💡 Comparativa de Precios y Sugerencia Comercial")
 
-    m1, m2, m3, m4 = st.columns(4)
+    m1, m4 = st.columns(4)
     m1.metric("Precio Recomendado Tabla", f"${precio_recomendado_tm:,.2f} / TM")
-    m2.metric("Precio que Ofreces", f"${precio_ofrecido:,.2f} / TM")
-    
-    if diferencia_tm <= 0:
-        m3.metric("Margen a Favor vs Tabla", f"${abs(diferencia_tm):,.2f} / TM", "Compra dentro de norma", delta_color="normal")
-    else:
-        m3.metric("Sobreprecio / Re-pago", f"+${diferencia_tm:,.2f} / TM", "Por encima de tabla", delta_color="inverse")
-
-    m4.metric("Ganancia Neta Proyectada", f"${ganancia_neta_lote:,.2f}")
+        
+    m4.metric("Inversión Proyectada", f"${valor_total_venta:,.2f}")
 
     if precio_ofrecido <= precio_recomendado_tm:
         st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
@@ -261,11 +255,6 @@ with tab1:
         st.warning(f"🟡 **RE-PAGO DETECTADO**: Estás offrant **${diferencia_tm:,.2f}/TM de sobreprecio** sobre la tabla oficial (Costo extra total: **${impacto_sobreprecio_total:,.2f}**). Se aprueba porque deja ganancia neta, pero se recomienda compensar con Blending.")
     else:
         st.error(f"🔴 **LOTE DEFICITARIO**: Tu precio ofrecido (${precio_ofrecido:,.2f}/TM) supera el valor de venta total. Genera una pérdida de **${abs(ganancia_neta_lote):,.2f}** si no se mezcla.")
-
-    igv_monto = valor_total_venta * float(IGV_TASA_DEFAULT)
-    factura_total = valor_total_venta + igv_monto
-
-    st.markdown(f"📄 **Facturación Estimada (IGV {IGV_TASA_DEFAULT*100:.1f}%)**: Base Imponible: **${valor_total_venta:,.2f}** | IGV: **${igv_monto:,.2f}** | **Total Factura: ${factura_total:,.2f}**")
 
     if st.button("➕ Confirmar y Guardar Lote para Blending"):
         lote_guardado = {
