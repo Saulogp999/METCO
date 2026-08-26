@@ -244,10 +244,10 @@ with tab1:
     st.markdown("---")
     st.subheader("💡 Comparativa de Precios y Sugerencia Comercial")
 
-    m1, m4 = st.columns(4)
+    m1, m2 = st.columns(2)
     m1.metric("Precio Recomendado Tabla", f"${precio_recomendado_tm:,.2f} / TM")
         
-    m4.metric("Inversión Proyectada", f"${valor_total_venta:,.2f}")
+    m2.metric("Inversión Proyectada", f"${valor_total_venta:,.2f}")
 
     if precio_ofrecido <= precio_recomendado_tm:
         st.success(f"🟢 **EXCELENTE OFERTA**: Tu precio de compra (${precio_ofrecido:,.2f}/TM) no supera el sugerido por Tabla Oficial (${precio_recomendado_tm:,.2f}/TM). Garantizas margen comercial directo.")
